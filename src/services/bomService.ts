@@ -47,8 +47,9 @@ export function generateBOM(project: Project, marginPercent: number = 15): BOMIt
   for (const wire of project.wires) {
     const key = `cable_cu_${wire.crossSectionMm2 || 1.5}`;
     const baseLength = wire.lengthMeters || 3;
-    // Aplicar margen de curvas, subidas/bajadas de pared y empalmes (+15%)
-    const realLength = baseLength * (1 + marginPercent / 100);
+    // Aplicar margen individual de holgura de curvas, cajas y borneras si está configurado en el cable
+    const effectiveSlack = wire.slackPercent !== undefined ? wire.slackPercent : marginPercent;
+    const realLength = baseLength * (1 + effectiveSlack / 100);
     cableLengths[key] = (cableLengths[key] || 0) + realLength;
   }
 
@@ -70,7 +71,7 @@ export function generateBOM(project: Project, marginPercent: number = 15): BOMIt
       id: `bom_${key}`,
       category: 'Conductores Eléctricos',
       name: `Cable Unipolar Cobre IRAM NM 247-3 ${gauge} mm²`,
-      description: `Conductor de cobre electrolítico normalizado con aislación PVC para tensión 450/750V (incluye margen ${marginPercent}% por bajadas de pared).`,
+      description: `Conductor de cobre electrolítico normalizado con aislación PVC para tensión 450/750V (incluye holgura reglamentaria para borneras y curvas).`,
       quantity: roundedMeters,
       unit: 'm',
       unitPrice,
@@ -79,15 +80,15 @@ export function generateBOM(project: Project, marginPercent: number = 15): BOMIt
     });
   }
 
-  // 2. Cañerías / Canalizaciones (Aproximadamente la mitad de los metros lineales de conductor)
+  // 2. Cañerías / Canalizaciones (Conforme a ocupación <= 35% AEA 771.12)
   const totalConductorMeters = Object.values(cableLengths).reduce((a, b) => a + b, 0);
-  const conduitMeters = Math.ceil((totalConductorMeters / 3) * 1.1);
+  const conduitMeters = Math.ceil((totalConductorMeters / 3) * 1.15);
   const conduitPrice = overrides['cano_corrugado_3_4'] !== undefined ? overrides['cano_corrugado_3_4'] : DEFAULT_PRICES['cano_corrugado_3_4'];
   items.push({
     id: 'bom_conduit',
     category: 'Canalizaciones',
-    name: 'Caño Corrugado Blanco Ignífugo Ø 3/4" (19 mm)',
-    description: 'Cañería flexible de PVC antillama IRAM 62386 para embutir en mampostería y losas.',
+    name: 'Caño Corrugado Blanco Ignífugo Ø 3/4" (19 mm) IRAM 62386',
+    description: 'Cañería flexible de PVC antillama normalizada para embutir en mampostería y losas (ocupación máxima 35%).',
     quantity: conduitMeters,
     unit: 'm',
     unitPrice: conduitPrice,

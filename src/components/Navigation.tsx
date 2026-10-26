@@ -12,6 +12,7 @@ import {
   GraduationCap,
   FileText,
   Sparkles,
+  ClipboardList,
 } from 'lucide-react';
 
 export type ActiveTab =
@@ -23,6 +24,7 @@ export type ActiveTab =
   | 'materiales'
   | 'practicas'
   | 'aprender'
+  | 'solicitud'
   | 'informe';
 
 interface NavigationProps {
@@ -95,7 +97,7 @@ export const Navigation: React.FC<NavigationProps> = ({
       id: 'practicas' as ActiveTab,
       label: 'Aula de Prácticas',
       icon: GraduationCap,
-      badge: '10 Talleres',
+      badge: '14 Talleres',
       badgeColor: 'text-cyan-400 bg-cyan-950/60 border-cyan-700/50',
     },
     {
@@ -104,6 +106,13 @@ export const Navigation: React.FC<NavigationProps> = ({
       icon: Sparkles,
       badge: 'Principiante',
       badgeColor: 'text-emerald-400 bg-emerald-950/60 border-emerald-700/50',
+    },
+    {
+      id: 'solicitud' as ActiveTab,
+      label: 'Solicitud Cliente',
+      icon: ClipboardList,
+      badge: 'Nuevo',
+      badgeColor: 'text-amber-400 bg-amber-950/60 border-amber-700/50',
     },
     {
       id: 'informe' as ActiveTab,

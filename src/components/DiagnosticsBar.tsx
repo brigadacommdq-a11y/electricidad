@@ -22,6 +22,7 @@ interface DiagnosticsBarProps {
   onPauseSimulation: () => void;
   onResetSimulation: () => void;
   onVerifyCircuit: () => void;
+  onFocusCoordinates?: (coords: { x: number; y: number }) => void;
 }
 
 export const DiagnosticsBar: React.FC<DiagnosticsBarProps> = ({
@@ -30,6 +31,7 @@ export const DiagnosticsBar: React.FC<DiagnosticsBarProps> = ({
   onPauseSimulation,
   onResetSimulation,
   onVerifyCircuit,
+  onFocusCoordinates,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -139,24 +141,44 @@ export const DiagnosticsBar: React.FC<DiagnosticsBarProps> = ({
               return (
                 <div
                   key={diag.id}
-                  className={`p-2.5 rounded border text-xs leading-relaxed space-y-1 ${borderBadge}`}
+                  className={`p-2.5 rounded-lg border text-xs leading-relaxed space-y-1.5 ${borderBadge}`}
                 >
-                  <div className="flex items-center justify-between font-semibold">
-                    <span className="flex items-center gap-1.5">
-                      {diag.level === 'error' && <XCircle className="w-3.5 h-3.5 text-red-400" />}
-                      {diag.level === 'warning' && <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />}
-                      {diag.level === 'success' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
-                      {diag.level === 'info' && <Info className="w-3.5 h-3.5 text-sky-400" />}
-                      {diag.title}
+                  <div className="flex items-center justify-between font-semibold gap-2">
+                    <span className="flex items-center gap-1.5 min-w-0">
+                      {diag.level === 'error' && <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />}
+                      {diag.level === 'warning' && <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
+                      {diag.level === 'success' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
+                      {diag.level === 'info' && <Info className="w-3.5 h-3.5 text-sky-400 shrink-0" />}
+                      <span className="truncate">{diag.title}</span>
                     </span>
-                    <span className="text-[10px] uppercase font-mono tracking-wider opacity-75">
-                      {diag.level}
-                    </span>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      {diag.faultDetail && onFocusCoordinates && (
+                        <button
+                          onClick={() => onFocusCoordinates(diag.faultDetail!.coordinates)}
+                          className="px-2 py-0.5 bg-red-600/90 hover:bg-red-500 text-white rounded text-[10px] font-bold shadow-xs transition-colors flex items-center gap-1"
+                          title="Centrar y acercar el plano al lugar exacto de la falla"
+                        >
+                          <span>Localizar</span>
+                        </button>
+                      )}
+                      <span className="text-[10px] uppercase font-mono tracking-wider opacity-75">
+                        {diag.level}
+                      </span>
+                    </div>
                   </div>
+
                   <p className="text-slate-300 text-[11px]">{diag.message}</p>
+
+                  {diag.faultDetail?.trippedProtection && (
+                    <div className="text-[10px] p-1.5 rounded bg-black/40 border border-red-500/30 text-red-300 font-mono">
+                      ⚡ <strong>Protección Disparada:</strong> {diag.faultDetail.trippedProtection.statusText}
+                    </div>
+                  )}
+
                   {diag.recommendation && (
-                    <p className="text-slate-400 text-[10px] italic border-t border-slate-800/80 pt-1 mt-1">
-                      💡 Solución: {diag.recommendation}
+                    <p className="text-slate-400 text-[10px] italic border-t border-slate-800/80 pt-1">
+                      💡 Solución sugerida: {diag.recommendation}
                     </p>
                   )}
                 </div>

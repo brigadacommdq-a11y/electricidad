@@ -10,6 +10,7 @@ import {
   ElectricalSymbol,
   Wire,
 } from '../types/electra';
+import { locateAllFaults } from './faultLocalization';
 
 export interface TraceResult {
   energizedComponents: Set<string>;
@@ -341,19 +342,37 @@ export function simulateElectricalNetwork(project: Project): {
     }
   }
 
-  // 6. Detección de Cortocircuito (Camino directo Fase -> Neutro sin carga)
-  let hasShortCircuit = false;
-  for (const nRoot of neutralRoots) {
-    if (reachableFromPhase.has(nRoot)) {
-      hasShortCircuit = true;
-      diagnostics.push({
-        id: 'diag_short_circuit',
-        level: 'error',
-        title: '¡CORTOCIRCUITO DIRECTO DETECTADO!',
-        message: 'Existe un camino de impedancia nula entre Fase y Neutro sin pasar por una carga resistiva o inductiva.',
-        recommendation: 'Verifica las conexiones: la Fase nunca debe conectarse directamente al Neutro sin una luminaria o carga intermedia. Desconecta el puente indebido.',
-      });
-      break;
+  // 6. Detección y Localización Avanzada de Fallas y Cortocircuitos
+  const detailedFaults = locateAllFaults(project);
+  let hasShortCircuit = detailedFaults.some((f) => f.category === 'cortocircuito_franco');
+
+  for (const fault of detailedFaults) {
+    diagnostics.unshift({
+      id: fault.id,
+      level: fault.severity === 'peligro_inmediato' ? 'error' : 'warning',
+      title: fault.title,
+      message: `${fault.detectionReason} ${fault.faultLoopDescription}`,
+      componentId: fault.fromComponentId || fault.involvedComponentIds[0],
+      wireId: fault.involvedWireIds[0],
+      recommendation: fault.remedySteps.join(' '),
+      faultDetail: fault,
+    });
+  }
+
+  // Fallback si por BFS estándar también se detecta cortocircuito no capturado
+  if (!hasShortCircuit) {
+    for (const nRoot of neutralRoots) {
+      if (reachableFromPhase.has(nRoot)) {
+        hasShortCircuit = true;
+        diagnostics.unshift({
+          id: 'diag_short_circuit_generic',
+          level: 'error',
+          title: '¡CORTOCIRCUITO DIRECTO DETECTADO!',
+          message: 'Existe un camino de impedancia nula entre Fase y Neutro sin pasar por una carga resistiva o inductiva.',
+          recommendation: 'Verifica las conexiones: la Fase nunca debe conectarse directamente al Neutro sin una luminaria o carga intermedia.',
+        });
+        break;
+      }
     }
   }
 
@@ -488,6 +507,7 @@ export function simulateElectricalNetwork(project: Project): {
       energizedComponents,
       energizedWires,
       activeLamps,
+      activeFaults: detailedFaults,
     },
     updatedSymbols: Array.from(symbolMap.values()),
     updatedWires: wires,

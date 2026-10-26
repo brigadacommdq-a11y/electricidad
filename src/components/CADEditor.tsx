@@ -22,6 +22,9 @@ import {
   Layers,
   Box,
   Tag,
+  AlertOctagon,
+  Crosshair,
+  GitBranch,
 } from 'lucide-react';
 import {
   Project,
@@ -31,6 +34,7 @@ import {
   ArchElement,
   ConductorType,
   SimulationState,
+  FaultDetail,
 } from '../types/electra';
 import { CADTool } from './Toolbar';
 import { createSymbolFromTemplate, WIRE_COLOR_MAP, getComponentLabelInfo } from '../services/symbolCatalog';
@@ -38,6 +42,8 @@ import { RealisticCADSymbolSVG, CADViewMode } from './cad/RealisticCADSymbolSVG'
 import { Room3DViewer } from './cad/Room3DViewer';
 import { ComponentLearningModal } from './ComponentLearningModal';
 import { PhysicalComponentCard } from './PhysicalComponentCard';
+import { ConductorSpecificationModal } from './ConductorSpecificationModal';
+import { calculateOrthogonalPath, pointsToSVGPath } from '../services/orthogonalRouting';
 
 interface CADEditorProps {
   project: Project;
@@ -87,6 +93,24 @@ export const CADEditor: React.FC<CADEditorProps> = ({
   const [learningType, setLearningType] = useState<string | null>(null);
   // Control de tamaño y visibilidad de etiquetas permanentes
   const [labelSize, setLabelSize] = useState<'oculto' | 'pequeno' | 'mediano' | 'grande'>('mediano');
+
+  // Modo de trazado de cables y canalizaciones (Ortogonal a 90° vs Bézier curvo)
+  const [routingMode, setRoutingMode] = useState<'orthogonal' | 'bezier'>('orthogonal');
+  // Modal de Ficha Técnica de Conductor
+  const [isConductorModalOpen, setIsConductorModalOpen] = useState<boolean>(false);
+  // Panel y zoom de localizador de fallas
+  const [isFaultPanelOpen, setIsFaultPanelOpen] = useState<boolean>(false);
+
+  // Centrar vista en coordenadas específicas (ej. foco en cortocircuito)
+  const zoomToCoordinates = (x: number, y: number, targetZoom = 1.4) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    setZoom(targetZoom);
+    setPan({
+      x: rect.width / 2 - x * targetZoom,
+      y: rect.height / 2 - y * targetZoom,
+    });
+  };
 
   // Arrastre de elementos
   const [draggingSymbolId, setDraggingSymbolId] = useState<string | null>(null);
@@ -633,6 +657,37 @@ export const CADEditor: React.FC<CADEditorProps> = ({
           </div>
         )}
 
+        {/* Control de Modo de Trazado (Ortogonal a 90° vs Bézier Curvo) */}
+        {!is3DView && (
+          <div className="flex items-center bg-slate-900/95 border border-slate-700/90 rounded-lg p-0.5 shadow-xl backdrop-blur-md">
+            <button
+              onClick={() => setRoutingMode((m) => (m === 'orthogonal' ? 'bezier' : 'orthogonal'))}
+              className={`px-2 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                routingMode === 'orthogonal'
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                  : 'text-slate-300 hover:text-white'
+              }`}
+              title="Alternar entre trazado ortogonal de canalizaciones (Manhattan 90°) y trazo curvo"
+            >
+              <GitBranch className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden sm:inline">Trazado:</span>
+              <strong className="text-amber-300 capitalize">{routingMode === 'orthogonal' ? 'Ortogonal' : 'Curvo'}</strong>
+            </button>
+          </div>
+        )}
+
+        {/* Botón de Ficha de Conductor cuando hay un cable seleccionado */}
+        {!is3DView && selectedElementType === 'wire' && selectedElementId && (
+          <button
+            onClick={() => setIsConductorModalOpen(true)}
+            className="px-2.5 py-1 bg-amber-500 text-slate-950 hover:bg-amber-400 font-bold text-xs rounded-lg shadow-xl backdrop-blur-md flex items-center gap-1.5 transition-all animate-pulse"
+            title="Abrir ficha técnica de dimensionamiento y normas AEA del conductor seleccionado"
+          >
+            <Zap className="w-3.5 h-3.5" />
+            <span>Ficha Conductor</span>
+          </button>
+        )}
+
         {/* Botón de Ficha Educativa con Normas */}
         <button
           onClick={() => {
@@ -646,6 +701,80 @@ export const CADEditor: React.FC<CADEditorProps> = ({
           <span className="hidden sm:inline">Enciclopedia</span>
         </button>
       </div>
+
+      {/* Floating Card: Localizador de Fallas y Cortocircuitos (cuando se detectan fallas activas) */}
+      {!is3DView && simState?.activeFaults && simState.activeFaults.length > 0 && (
+        <div className="absolute top-12 left-2 sm:left-3 z-30 max-w-sm sm:max-w-md w-[calc(100%-1rem)] sm:w-auto bg-slate-950/95 border-2 border-red-500 rounded-2xl shadow-2xl p-3 backdrop-blur-md space-y-2 text-xs animate-fade-in">
+          <div className="flex items-center justify-between border-b border-red-900/60 pb-1.5">
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+              </span>
+              <h4 className="font-black text-red-300 text-xs sm:text-sm tracking-wide">
+                ¡LOCALIZADOR DE FALLAS ({simState.activeFaults.length})!
+              </h4>
+            </div>
+            <button
+              onClick={() => setIsFaultPanelOpen(!isFaultPanelOpen)}
+              className="text-[11px] text-red-400 hover:text-red-200 font-semibold px-2 py-0.5 bg-red-950/60 rounded border border-red-800"
+            >
+              {isFaultPanelOpen ? 'Ocultar' : 'Ver detalle'}
+            </button>
+          </div>
+
+          {/* Primera falla con botón de Centrado Automático */}
+          {(() => {
+            const mainFault = simState.activeFaults[0];
+            return (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-bold text-white text-[11px] truncate">{mainFault.title}</span>
+                  <button
+                    onClick={() => zoomToCoordinates(mainFault.coordinates.x, mainFault.coordinates.y, 1.4)}
+                    className="px-2 py-1 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-bold text-[11px] rounded-lg shadow-md flex items-center gap-1 shrink-0 transition-transform active:scale-95"
+                    title="Centrar y acercar el plano al lugar exacto de la falla"
+                  >
+                    <Crosshair className="w-3.5 h-3.5" />
+                    <span>Centrar en Falla</span>
+                  </button>
+                </div>
+                <p className="text-[11px] text-red-200 leading-tight line-clamp-2">
+                  {mainFault.detectionReason}
+                </p>
+
+                {mainFault.trippedProtection && (
+                  <div className="p-1.5 bg-red-950/80 rounded border border-red-700/60 text-[10px] text-red-300">
+                    <strong className="text-white">Protección que actúa: </strong>
+                    {mainFault.trippedProtection.statusText}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* Lista expandida de fallas si se abre */}
+          {isFaultPanelOpen && (
+            <div className="space-y-2 pt-2 border-t border-slate-800 max-h-48 overflow-y-auto">
+              {simState.activeFaults.slice(1).map((f) => (
+                <div key={f.id} className="p-2 bg-slate-900 rounded-lg border border-red-800/60 flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <span className="font-semibold text-white block truncate">{f.title}</span>
+                    <span className="text-[10px] text-slate-400 truncate block">{f.faultLoopDescription}</span>
+                  </div>
+                  <button
+                    onClick={() => zoomToCoordinates(f.coordinates.x, f.coordinates.y, 1.4)}
+                    className="p-1 bg-slate-800 hover:bg-slate-700 text-red-300 rounded shrink-0"
+                    title="Centrar en esta falla"
+                  >
+                    <Crosshair className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Si está activo el Visor 3D, mostramos el canvas Three.js interactivo */}
       {is3DView ? (
@@ -1061,10 +1190,30 @@ export const CADEditor: React.FC<CADEditorProps> = ({
             const x2 = toSym.x + (toTerm?.relX || 0);
             const y2 = toSym.y + (toTerm?.relY || 0);
 
-            // Trazo curvo suave (Bézier cuadrática para realismo CAD de cañerías)
-            const midX = (x1 + x2) / 2;
-            const midY = (y1 + y2) / 2 + (x2 - x1) * 0.1;
-            const pathD = `M ${x1} ${y1} Q ${midX} ${midY} ${x2} ${y2}`;
+            // Verificar si este cable es parte de una falla activa (cortocircuito / tierra / sobrecarga)
+            const activeFault = simState?.activeFaults?.find((f) => f.involvedWireIds.includes(wire.id));
+            const isFaultWire = Boolean(activeFault);
+
+            // Determinar tipo de trazado: Ortogonal (Canalización) o Bézier curvo
+            const isOrthogonal = (wire.routingMode || routingMode) === 'orthogonal';
+            let pathD = '';
+            let labelX = (x1 + x2) / 2;
+            let labelY = (y1 + y2) / 2;
+
+            if (isOrthogonal) {
+              const orthPoints = calculateOrthogonalPath({ x: x1, y: y1 }, { x: x2, y: y2 }, wire.points);
+              pathD = pointsToSVGPath(orthPoints, 10);
+              if (orthPoints.length >= 3) {
+                labelX = orthPoints[1].x;
+                labelY = orthPoints[1].y;
+              }
+            } else {
+              const midX = (x1 + x2) / 2;
+              const midY = (y1 + y2) / 2 + (x2 - x1) * 0.1;
+              pathD = `M ${x1} ${y1} Q ${midX} ${midY} ${x2} ${y2}`;
+              labelX = midX;
+              labelY = midY;
+            }
 
             const wireColor = wire.color || WIRE_COLOR_MAP[wire.type]?.stroke || '#854d0e';
 
@@ -1078,10 +1227,22 @@ export const CADEditor: React.FC<CADEditorProps> = ({
                 className="cursor-pointer"
               >
                 {/* Zona de impacto más amplia para hacer clic fácilmente */}
-                <path d={pathD} fill="none" stroke="transparent" strokeWidth={16} />
+                <path d={pathD} fill="none" stroke="transparent" strokeWidth={18} />
+
+                {/* Resplandor de ALERTA DE FALLA / CORTOCIRCUITO (Pulsante rojo brillante) */}
+                {isFaultWire && (
+                  <path
+                    d={pathD}
+                    fill="none"
+                    stroke="#ef4444"
+                    strokeWidth={isSelected ? 10 : 8}
+                    opacity={0.85}
+                    className="animate-pulse"
+                  />
+                )}
 
                 {/* Sombra de cable energizado */}
-                {wire.isEnergized && (
+                {wire.isEnergized && !isFaultWire && (
                   <path
                     d={pathD}
                     fill="none"
@@ -1091,29 +1252,40 @@ export const CADEditor: React.FC<CADEditorProps> = ({
                   />
                 )}
 
-                {/* Cable físico */}
+                {/* Cable físico / Canalización */}
                 <path
                   d={pathD}
                   fill="none"
-                  stroke={isSelected ? '#f59e0b' : wireColor}
-                  strokeWidth={isSelected ? 3.5 : 2}
+                  stroke={isFaultWire ? '#ef4444' : isSelected ? '#f59e0b' : wireColor}
+                  strokeWidth={isFaultWire ? 4 : isSelected ? 3.5 : 2.2}
                   strokeDasharray={wire.type === 'tierra' ? '6,3' : wire.hasCurrent ? '8,4' : undefined}
                 />
 
-                {/* Etiqueta de longitud a mitad del recorrido */}
+                {/* Etiqueta técnica a mitad del recorrido */}
                 {showDimensions && (
-                  <text
-                    x={midX}
-                    y={midY - 4}
-                    textAnchor="middle"
-                    fill={wireColor}
-                    fontSize="9"
-                    fontWeight="500"
-                    fontFamily="'JetBrains Mono', monospace"
-                    className="select-none pointer-events-none"
-                  >
-                    {wire.lengthMeters}m ({wire.type.toUpperCase()})
-                  </text>
+                  <g className="select-none pointer-events-none">
+                    <rect
+                      x={labelX - 32}
+                      y={labelY - 14}
+                      width={64}
+                      height={13}
+                      rx={2}
+                      fill="rgba(15, 23, 42, 0.88)"
+                      stroke={isFaultWire ? '#ef4444' : isSelected ? '#f59e0b' : '#334155'}
+                      strokeWidth={0.8}
+                    />
+                    <text
+                      x={labelX}
+                      y={labelY - 4}
+                      textAnchor="middle"
+                      fill={isFaultWire ? '#fca5a5' : isSelected ? '#f59e0b' : wireColor}
+                      fontSize="8"
+                      fontWeight="bold"
+                      fontFamily="'JetBrains Mono', monospace"
+                    >
+                      {isFaultWire ? '¡FALLA!' : `${wire.lengthMeters}m ${wire.crossSectionMm2 || 2.5}mm²`}
+                    </text>
+                  </g>
                 )}
               </g>
             );
@@ -1138,6 +1310,7 @@ export const CADEditor: React.FC<CADEditorProps> = ({
             const isSelected = selectedElementType === 'symbol' && selectedElementId === sym.id;
             const isDragging = draggingSymbolId === sym.id;
             const isLampActive = sym.state?.isOn;
+            const isFaultSym = simState?.activeFaults?.some((f) => f.involvedComponentIds.includes(sym.id));
 
             return (
               <g
@@ -1164,8 +1337,29 @@ export const CADEditor: React.FC<CADEditorProps> = ({
                 }}
                 className={`${activeTool === 'select' && !isPanMode ? 'cursor-grab' : 'cursor-pointer'}`}
               >
+                {/* Resplandor de ALERTA si el componente está comprometido en una falla */}
+                {isFaultSym && (
+                  <g className="animate-pulse pointer-events-none">
+                    <circle
+                      cx={0}
+                      cy={0}
+                      r={36}
+                      fill="none"
+                      stroke="#ef4444"
+                      strokeWidth={3}
+                      strokeDasharray="5,3"
+                    />
+                    <circle
+                      cx={0}
+                      cy={0}
+                      r={44}
+                      fill="rgba(239, 68, 68, 0.18)"
+                    />
+                  </g>
+                )}
+
                 {/* Resplandor si es lámpara encendida */}
-                {isLampActive && (
+                {isLampActive && !isFaultSym && (
                   <circle
                     cx={0}
                     cy={0}
@@ -1330,6 +1524,20 @@ export const CADEditor: React.FC<CADEditorProps> = ({
       onClose={() => setLearningType(null)}
     />
   )}
+
+  {/* Modal de Especificación y Dimensionamiento de Conductores (AEA 771) */}
+  <ConductorSpecificationModal
+    isOpen={isConductorModalOpen}
+    wire={project.wires.find((w) => w.id === selectedElementId) || null}
+    project={project}
+    onClose={() => setIsConductorModalOpen(false)}
+    onUpdateWire={(updatedWire) => {
+      onUpdateProject((prev) => ({
+        ...prev,
+        wires: prev.wires.map((w) => (w.id === updatedWire.id ? updatedWire : w)),
+      }));
+    }}
+  />
 </div>
   );
 };

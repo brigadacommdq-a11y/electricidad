@@ -521,4 +521,199 @@ export const PRACTICE_LEVELS: PracticeLevel[] = [
       };
     },
   },
+  {
+    id: 11,
+    title: '11. Diagnóstico de Cortocircuito Franco en Caja de Paso',
+    difficulty: 'Intermedio',
+    objective: 'Localizar el puente indebido entre Fase y Neutro que provoca el disparo magnético instantáneo de la térmica.',
+    description: 'En esta instalación se ha reportado que al accionar la térmica salta instantáneamente por cortocircuito. Utiliza el Localizador de Fallas de ELECTRA PLAN para identificar el tramo problemático, eliminar el cable en corto y reestablecer el encendido seguro de la lámpara.',
+    componentsNeeded: ['Alimentación de Red', 'Térmica Curva C', 'Caja de Paso', 'Interruptor', 'Luminaria'],
+    instructions: [
+      '1. Observa el mensaje de diagnóstico en rojo: indica un cortocircuito franco de impedancia casi nula.',
+      '2. Pulsa "Centrar en Falla" en el panel de alerta para visualizar el puente erróneo.',
+      '3. Selecciona el cable incorrecto conectado directamente entre Fase y Neutro en la caja y elimínalo con la tecla Supr o el icono de basura.',
+      '4. Conecta el cable de retorno de la lámpara al interruptor para cerrar el circuito correctamente.',
+      '5. Pulsa "Verificar" y comprueba que la térmica no dispara y la lámpara enciende.',
+    ],
+    hints: [
+      'Pista: En la caja de derivación hay un cable marrón conectado directamente a la bornera de Neutro celeste. ¡Esa es la falla!',
+    ],
+    initialProject: {
+      symbols: [
+        createSymbolFromTemplate('fuente_ac', 80, 180, 'floor_1', 'C1', 1),
+        createSymbolFromTemplate('termica', 220, 180, 'floor_1', 'C1', 1),
+        createSymbolFromTemplate('caja_paso', 360, 180, 'floor_1', 'C1', 1),
+        createSymbolFromTemplate('interruptor_simple', 360, 300, 'floor_1', 'C1', 1),
+        createSymbolFromTemplate('luminaria', 520, 180, 'floor_1', 'C1', 1),
+      ],
+      wires: [
+        { id: 'w_init_1', floorId: 'floor_1', circuitId: 'C1', type: 'fase', fromComponentId: 'sym_fuente_ac_1', fromTerminalId: 'L', toComponentId: 'sym_termica_1', toTerminalId: 'L_IN', color: '#854d0e', crossSectionMm2: 2.5, lengthMeters: 2 },
+        { id: 'w_init_2', floorId: 'floor_1', circuitId: 'C1', type: 'neutro', fromComponentId: 'sym_fuente_ac_1', fromTerminalId: 'N', toComponentId: 'sym_termica_1', toTerminalId: 'N_IN', color: '#0284c7', crossSectionMm2: 2.5, lengthMeters: 2 },
+        { id: 'w_init_3', floorId: 'floor_1', circuitId: 'C1', type: 'fase', fromComponentId: 'sym_termica_1', fromTerminalId: 'L_OUT', toComponentId: 'sym_caja_paso_1', toTerminalId: 'L_IN', color: '#854d0e', crossSectionMm2: 2.5, lengthMeters: 2 },
+        { id: 'w_init_4', floorId: 'floor_1', circuitId: 'C1', type: 'neutro', fromComponentId: 'sym_termica_1', toComponentId: 'sym_caja_paso_1', fromTerminalId: 'N_OUT', toTerminalId: 'N_IN', color: '#0284c7', crossSectionMm2: 2.5, lengthMeters: 2 },
+        // CABLE EN CORTO INDEBIDO ENTRE FASE Y NEUTRO
+        { id: 'w_fault_short', floorId: 'floor_1', circuitId: 'C1', type: 'fase', fromComponentId: 'sym_caja_paso_1', fromTerminalId: 'L_OUT', toComponentId: 'sym_caja_paso_1', toTerminalId: 'N_OUT', color: '#854d0e', crossSectionMm2: 2.5, lengthMeters: 0.5 },
+      ],
+    },
+    solutionCheck: (project, sim) => {
+      const lamp = project.symbols.find((s) => s.type === 'luminaria');
+      if (sim.hasShortCircuit) {
+        return {
+          passed: false,
+          feedback: 'Todavía persiste el cortocircuito franco. Revisa la caja de paso y retira el puente indebido entre L y N.',
+        };
+      }
+      if (lamp && sim.activeLamps.has(lamp.id)) {
+        return {
+          passed: true,
+          feedback: '¡Excelente diagnóstico! Localizaste y eliminaste el cortocircuito franco con éxito. La instalación funciona segura.',
+        };
+      }
+      return {
+        passed: false,
+        feedback: 'El cortocircuito fue eliminado, pero aún falta conectar la tecla y la lámpara para completar el circuito.',
+      };
+    },
+  },
+  {
+    id: 12,
+    title: '12. Falla de Aislación a Tierra y Disparo Diferencial',
+    difficulty: 'Intermedio',
+    objective: 'Identificar una fuga a tierra provocada por un conductor de Fase conectado al borne PE.',
+    description: 'El disyuntor diferencial de 30mA dispara continuamente debido a una corriente de fuga residual. Aprende a distinguir una falla a tierra de un cortocircuito entre polos y repara la conexión a masa.',
+    componentsNeeded: ['Tablero con Diferencial', 'Luminaria', 'Jabalina PAT'],
+    instructions: [
+      '1. Analiza el diagnóstico: el simulador reporta disparo del Interruptor Diferencial por IΔn > 30mA hacia PE.',
+      '2. Localiza el cable que conecta la Fase con el borne de protección PE.',
+      '3. Reconéctalo al terminal correcto (L) de la carga.',
+      '4. Comprueba que el conductor PE verde-amarillo quede conectado únicamente a la jabalina.',
+    ],
+    hints: [
+      'Pista: El diferencial vigila el equilibrio entre la corriente que entra por la Fase y sale por el Neutro. Si la corriente escapa por Tierra PE, dispara en menos de 30 ms.',
+    ],
+    initialProject: {
+      symbols: [
+        createSymbolFromTemplate('fuente_ac', 80, 180, 'floor_1', 'C1', 1),
+        createSymbolFromTemplate('tablero', 220, 180, 'floor_1', 'C1', 1),
+        createSymbolFromTemplate('puesta_tierra', 220, 320, 'floor_1', 'C1', 1),
+        createSymbolFromTemplate('luminaria', 440, 180, 'floor_1', 'C1', 1),
+      ],
+      wires: [
+        { id: 'w12_1', floorId: 'floor_1', circuitId: 'C1', type: 'fase', fromComponentId: 'sym_fuente_ac_1', fromTerminalId: 'L', toComponentId: 'sym_tablero_1', toTerminalId: 'L_IN', color: '#854d0e', crossSectionMm2: 2.5, lengthMeters: 2 },
+        { id: 'w12_2', floorId: 'floor_1', circuitId: 'C1', type: 'neutro', fromComponentId: 'sym_fuente_ac_1', fromTerminalId: 'N', toComponentId: 'sym_tablero_1', toTerminalId: 'N_IN', color: '#0284c7', crossSectionMm2: 2.5, lengthMeters: 2 },
+        { id: 'w12_3', floorId: 'floor_1', circuitId: 'C1', type: 'tierra', fromComponentId: 'sym_puesta_tierra_1', fromTerminalId: 'PE', toComponentId: 'sym_tablero_1', toTerminalId: 'PE_IN', color: '#16a34a', crossSectionMm2: 2.5, lengthMeters: 2 },
+        // CABLE ERRÓNEO: FASE CONECTADA AL BORNE PE DEL TABLERO
+        { id: 'w12_fault', floorId: 'floor_1', circuitId: 'C1', type: 'fase', fromComponentId: 'sym_tablero_1', fromTerminalId: 'L_OUT', toComponentId: 'sym_tablero_1', toTerminalId: 'PE_OUT', color: '#854d0e', crossSectionMm2: 2.5, lengthMeters: 0.5 },
+      ],
+    },
+    solutionCheck: (project, sim) => {
+      const hasEarthFault = sim.diagnostics.some((d) => d.faultDetail?.category === 'falla_tierra');
+      if (hasEarthFault) {
+        return {
+          passed: false,
+          feedback: 'Persiste la fuga a tierra: el conductor de Fase sigue vinculado galvánicamente al conductor de protección PE.',
+        };
+      }
+      return {
+        passed: true,
+        feedback: '¡Felicitaciones! Eliminaste la fuga a tierra. El diferencial permanece armado y la instalación segura.',
+      };
+    },
+  },
+  {
+    id: 13,
+    title: '13. Corrección de Interruptor Invertido en el Neutro',
+    difficulty: 'Avanzado',
+    objective: 'Reconfigurar la conexión para que el interruptor corte la Fase viva y no el Neutro (Riesgo Crítico AEA 771).',
+    description: 'En esta instalación la lámpara enciende y apaga aparentemente bien, pero la tecla seccionaba el Neutro. El portalámparas queda bajo 220V constante con riesgo mortal al cambiar la lámpara. Corrige el conexionado respetando la norma AEA 90364.',
+    componentsNeeded: ['Alimentación', 'Interruptor Simple', 'Luminaria'],
+    instructions: [
+      '1. Revisa los conductores: observa que al interruptor llega el cable celeste (Neutro) en lugar del marrón (Fase).',
+      '2. Desconecta el Neutro del interruptor y llévalo directo al terminal N de la lámpara.',
+      '3. Conecta la Fase (marrón) a la entrada L del interruptor.',
+      '4. Conecta el Retorno desde la salida del interruptor hacia el borne L de la lámpara.',
+    ],
+    hints: [
+      'Pista: Según la reglamentación argentina, los interruptores unipolares NUNCA deben cortar el Neutro.',
+    ],
+    initialProject: {
+      symbols: [
+        createSymbolFromTemplate('fuente_ac', 80, 180, 'floor_1', 'C1', 1),
+        createSymbolFromTemplate('interruptor_simple', 260, 180, 'floor_1', 'C1', 1),
+        createSymbolFromTemplate('luminaria', 440, 180, 'floor_1', 'C1', 1),
+      ],
+      wires: [
+        // Neutro llevado al interruptor (PELIGRO)
+        { id: 'w13_1', floorId: 'floor_1', circuitId: 'C1', type: 'neutro', fromComponentId: 'sym_fuente_ac_1', fromTerminalId: 'N', toComponentId: 'sym_interruptor_simple_1', toTerminalId: 'L', color: '#0284c7', crossSectionMm2: 1.5, lengthMeters: 2 },
+        // Fase directa a la lámpara (PELIGRO)
+        { id: 'w13_2', floorId: 'floor_1', circuitId: 'C1', type: 'fase', fromComponentId: 'sym_fuente_ac_1', fromTerminalId: 'L', toComponentId: 'sym_luminaria_1', toTerminalId: 'L', color: '#854d0e', crossSectionMm2: 1.5, lengthMeters: 2 },
+        // Retorno conectado a Neutro de la lámpara
+        { id: 'w13_3', floorId: 'floor_1', circuitId: 'C1', type: 'retorno', fromComponentId: 'sym_interruptor_simple_1', fromTerminalId: 'R', toComponentId: 'sym_luminaria_1', toTerminalId: 'N', color: '#eab308', crossSectionMm2: 1.5, lengthMeters: 2 },
+      ],
+    },
+    solutionCheck: (project, sim) => {
+      const hasDanger = sim.diagnostics.some((d) => d.faultDetail?.category === 'conexion_peligrosa');
+      if (hasDanger) {
+        return {
+          passed: false,
+          feedback: 'El interruptor sigue conectado sobre el conductor de Neutro. Debe cortar la Fase (conductor marrón).',
+        };
+      }
+      const lamp = project.symbols.find((s) => s.type === 'luminaria');
+      if (lamp && sim.activeLamps.has(lamp.id)) {
+        return {
+          passed: true,
+          feedback: '¡Perfecto! Has normalizado el circuito según AEA 90364-771: la tecla corta la Fase y el portalámparas queda seguro.',
+        };
+      }
+      return {
+        passed: false,
+        feedback: 'Conexión corregida, acciona el interruptor para encender la luminaria.',
+      };
+    },
+  },
+  {
+    id: 14,
+    title: '14. Continuidad de Protección (PE) en Tomacorrientes',
+    difficulty: 'Avanzado',
+    objective: 'Garantizar que todos los tomacorrientes queden vinculados a la jabalina de puesta a tierra reglamentaria.',
+    description: 'Una inspección técnica detectó que los tomacorrientes de la sala carecen de conductor de tierra PE conectado. Tiende el cable verde-amarillo de sección mínima 2,5 mm² desde la jabalina a los bornes de protección.',
+    componentsNeeded: ['Alimentación', 'Tomacorrientes', 'Jabalina PAT'],
+    instructions: [
+      '1. Selecciona la herramienta "Cablear" y activa el tipo de conductor "PE (Tierra)".',
+      '2. Conecta desde el borne PE de la Jabalina hacia el borne PE del primer tomacorriente.',
+      '3. Continúa el conductor de protección hacia el segundo tomacorriente.',
+      '4. Comprueba que las alertas de seguridad por falta de PE desaparezcan del panel de diagnósticos.',
+    ],
+    hints: [
+      'Pista: La sección mínima de puesta a tierra reglamentaria en tomacorrientes generales es de 2,5 mm² (AEA 771.13.I).',
+    ],
+    initialProject: {
+      symbols: [
+        createSymbolFromTemplate('fuente_ac', 80, 160, 'floor_1', 'C1', 1),
+        createSymbolFromTemplate('puesta_tierra', 80, 280, 'floor_1', 'C1', 1),
+        createSymbolFromTemplate('tomacorriente', 260, 160, 'floor_1', 'C2', 1),
+        createSymbolFromTemplate('tomacorriente', 420, 160, 'floor_1', 'C2', 2),
+      ],
+      wires: [
+        { id: 'w14_1', floorId: 'floor_1', circuitId: 'C2', type: 'fase', fromComponentId: 'sym_fuente_ac_1', fromTerminalId: 'L', toComponentId: 'sym_tomacorriente_1', toTerminalId: 'L', color: '#854d0e', crossSectionMm2: 2.5, lengthMeters: 2 },
+        { id: 'w14_2', floorId: 'floor_1', circuitId: 'C2', type: 'neutro', fromComponentId: 'sym_fuente_ac_1', fromTerminalId: 'N', toComponentId: 'sym_tomacorriente_1', toTerminalId: 'N', color: '#0284c7', crossSectionMm2: 2.5, lengthMeters: 2 },
+        { id: 'w14_3', floorId: 'floor_1', circuitId: 'C2', type: 'fase', fromComponentId: 'sym_tomacorriente_1', fromTerminalId: 'L', toComponentId: 'sym_tomacorriente_2', toTerminalId: 'L', color: '#854d0e', crossSectionMm2: 2.5, lengthMeters: 2 },
+        { id: 'w14_4', floorId: 'floor_1', circuitId: 'C2', type: 'neutro', fromComponentId: 'sym_tomacorriente_1', fromTerminalId: 'N', toComponentId: 'sym_tomacorriente_2', toTerminalId: 'N', color: '#0284c7', crossSectionMm2: 2.5, lengthMeters: 2 },
+      ],
+    },
+    solutionCheck: (_project, sim) => {
+      const missingPe = sim.diagnostics.some((d) => d.id.includes('diag_toma_no_pe') || d.id.includes('fault_no_pe'));
+      if (!missingPe) {
+        return {
+          passed: true,
+          feedback: '¡Excelente! Todos los tomacorrientes cuentan con protección a tierra reglamentaria.',
+        };
+      }
+      return {
+        passed: false,
+        feedback: 'Aún quedan tomacorrientes sin conductor de protección (PE) conectado a la jabalina.',
+      };
+    },
+  },
 ];

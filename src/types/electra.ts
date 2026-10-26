@@ -68,6 +68,14 @@ export interface Wire {
   lengthMeters: number; // Longitud estimada en metros
   isEnergized?: boolean; // Para visualización en el simulador
   hasCurrent?: boolean; // Si circula corriente
+  // Opciones avanzadas de especificación y canalización
+  routingMode?: 'bezier' | 'orthogonal';
+  conduitType?: 'corrugado_ignifugo' | 'pvc_rigido' | 'canaleta' | 'acero_semipesado';
+  conduitDiameterMm?: number; // 19 (3/4"), 22 (7/8"), 25 (1")
+  slackPercent?: number; // Holgura para cajas y borneras (+10%, +15%)
+  installationMethod?: 'B1' | 'B2' | 'C'; // AEA 90364-771
+  insulationType?: 'PVC_70' | 'LS0H_90';
+  isManualOverride?: boolean;
 }
 
 export interface Room {
@@ -170,6 +178,40 @@ export interface Project {
   currency: 'ARS' | 'USD' | 'EUR';
 }
 
+// Tipos detallados de detección y localización de fallas
+export type FaultCategory =
+  | 'cortocircuito_franco' // L-N o L-L directo sin carga
+  | 'falla_tierra' // L-PE contacto directo o indirecto
+  | 'sobrecarga' // Ib > In calentamiento de conductores
+  | 'circuito_abierto' // Retorno o fase interrumpido
+  | 'conexion_peligrosa' // Interruptor en neutro, sin PE, neutro a tierra en receptor
+  | 'caida_tension_excesiva'; // Delta V > 3% o 5%
+
+export interface TrippedProtectionDetail {
+  deviceType: 'PIA_TERMOMAGNETICA' | 'INTERRUPTOR_DIFERENCIAL' | 'DPS_SOBRETENSION';
+  nominalRating: string; // e.g. "C16 (16A Curva C)" o "ID 40A / 30mA"
+  tripMechanism: 'DISPARO_MAGNETICO_INSTANTANEO' | 'DISPARO_TERMICO_RETARDADO' | 'DISPARO_DIFERENCIAL_RESIDUAL_30mA';
+  responseTimeMs: number; // < 20ms o < 30ms
+  statusText: string;
+}
+
+export interface FaultDetail {
+  id: string;
+  category: FaultCategory;
+  severity: 'peligro_inmediato' | 'advertencia_normativa' | 'circuito_inoperativo';
+  title: string;
+  faultLoopDescription: string;
+  detectionReason: string;
+  fromComponentId?: string;
+  toComponentId?: string;
+  involvedWireIds: string[];
+  involvedComponentIds: string[];
+  involvedTerminalKeys: string[];
+  trippedProtection?: TrippedProtectionDetail;
+  remedySteps: string[];
+  coordinates: { x: number; y: number };
+}
+
 // Simulador y diagnósticos
 export type DiagnosticLevel = 'success' | 'warning' | 'error' | 'info';
 
@@ -182,6 +224,7 @@ export interface DiagnosticItem {
   wireId?: string;
   circuitId?: string;
   recommendation?: string;
+  faultDetail?: FaultDetail;
 }
 
 export interface SimulationState {
@@ -193,6 +236,8 @@ export interface SimulationState {
   energizedComponents: Set<string>;
   energizedWires: Set<string>;
   activeLamps: Set<string>;
+  activeFaults?: FaultDetail[];
+  highlightedFaultId?: string | null;
 }
 
 // Aula de prácticas

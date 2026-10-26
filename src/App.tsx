@@ -20,6 +20,7 @@ import { BOMView } from './components/BOMView';
 import { PracticesView } from './components/PracticesView';
 import { BeginnerRecognitionLab } from './components/BeginnerRecognitionLab';
 import { ReportView } from './components/ReportView';
+import { ClientRequestView } from './components/ClientRequestView';
 import { HelpModal } from './components/HelpModal';
 import { Compass, Sliders, X, GitCommit } from 'lucide-react';
 
@@ -637,6 +638,15 @@ export default function App() {
         )}
 
         {activeTab === 'aprender' && <BeginnerRecognitionLab />}
+
+        {activeTab === 'solicitud' && (
+          <ClientRequestView
+            onLoadProjectToCAD={(newProject) => {
+              setProject(newProject);
+              setActiveTab('plano');
+            }}
+          />
+        )}
 
         {activeTab === 'informe' && <ReportView project={project} />}
       </main>
