@@ -18,6 +18,7 @@ import { CalculationsView } from './components/CalculationsView';
 import { SwitchboardView } from './components/SwitchboardView';
 import { BOMView } from './components/BOMView';
 import { PracticesView } from './components/PracticesView';
+import { BeginnerRecognitionLab } from './components/BeginnerRecognitionLab';
 import { ReportView } from './components/ReportView';
 import { HelpModal } from './components/HelpModal';
 import { Compass, Sliders, X, GitCommit } from 'lucide-react';
@@ -411,6 +412,7 @@ export default function App() {
                 }}
                 onToggleSwitch={handleToggleSwitch}
                 isSimulating={true}
+                simState={simState}
               />
 
               {/* Barra flotante inferior de acciones para Móvil (< lg) */}
@@ -630,8 +632,11 @@ export default function App() {
               setProject(practiceProj);
               setActiveTab('plano');
             }}
+            onOpenRecognitionLab={() => setActiveTab('aprender')}
           />
         )}
+
+        {activeTab === 'aprender' && <BeginnerRecognitionLab />}
 
         {activeTab === 'informe' && <ReportView project={project} />}
       </main>

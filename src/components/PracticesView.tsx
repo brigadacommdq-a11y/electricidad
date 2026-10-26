@@ -17,6 +17,7 @@ import {
   Layers,
   BookOpen,
   X,
+  Sparkles,
 } from 'lucide-react';
 import { PRACTICE_LEVELS } from '../services/practiceLevels';
 import { Project, PracticeLevel, SimulationState } from '../types/electra';
@@ -25,9 +26,10 @@ import { CADEditor } from './CADEditor';
 
 interface PracticesViewProps {
   onLoadPracticeToMain: (project: Project) => void;
+  onOpenRecognitionLab?: () => void;
 }
 
-export const PracticesView: React.FC<PracticesViewProps> = ({ onLoadPracticeToMain }) => {
+export const PracticesView: React.FC<PracticesViewProps> = ({ onLoadPracticeToMain, onOpenRecognitionLab }) => {
   const [currentLevelId, setCurrentLevelId] = useState<number>(1);
   const [practiceProject, setPracticeProject] = useState<Project>(() => {
     return initPractice(PRACTICE_LEVELS[0]);
@@ -172,6 +174,29 @@ export const PracticesView: React.FC<PracticesViewProps> = ({ onLoadPracticeToMa
           )}
         </div>
       </div>
+
+      {/* Banner / Acceso Rápido al Modo Principiante y Reconocimiento Físico */}
+      {onOpenRecognitionLab && (
+        <button
+          onClick={onOpenRecognitionLab}
+          className="w-full p-2.5 bg-gradient-to-r from-amber-500/15 via-emerald-500/15 to-cyan-500/15 border border-amber-500/40 hover:border-amber-400 rounded-xl flex items-center justify-between text-left transition-all group shadow-md"
+        >
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="text-xs font-bold text-amber-300 group-hover:text-amber-200 block">
+                Modo Principiante: Reconocimiento Real
+              </span>
+              <span className="text-[10px] text-slate-300 leading-tight block">
+                Aprender Térmica vs Disyuntor, bornes y jabalina paso a paso
+              </span>
+            </div>
+          </div>
+          <ArrowRight className="w-4 h-4 text-amber-400 group-hover:translate-x-0.5 transition-transform shrink-0 ml-1" />
+        </button>
+      )}
 
       {/* Selector Desplegable de Niveles */}
       <div>

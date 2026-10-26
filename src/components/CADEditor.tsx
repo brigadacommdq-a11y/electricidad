@@ -17,6 +17,11 @@ import {
   Hand,
   MousePointer,
   X,
+  Eye,
+  BookOpen,
+  Layers,
+  Box,
+  Tag,
 } from 'lucide-react';
 import {
   Project,
@@ -25,9 +30,14 @@ import {
   Room,
   ArchElement,
   ConductorType,
+  SimulationState,
 } from '../types/electra';
 import { CADTool } from './Toolbar';
-import { createSymbolFromTemplate, WIRE_COLOR_MAP } from '../services/symbolCatalog';
+import { createSymbolFromTemplate, WIRE_COLOR_MAP, getComponentLabelInfo } from '../services/symbolCatalog';
+import { RealisticCADSymbolSVG, CADViewMode } from './cad/RealisticCADSymbolSVG';
+import { Room3DViewer } from './cad/Room3DViewer';
+import { ComponentLearningModal } from './ComponentLearningModal';
+import { PhysicalComponentCard } from './PhysicalComponentCard';
 
 interface CADEditorProps {
   project: Project;
@@ -41,6 +51,7 @@ interface CADEditorProps {
   onSelectElement: (type: 'symbol' | 'wire' | 'room' | 'wall' | null, id: string | null) => void;
   onToggleSwitch: (symbolId: string) => void;
   isSimulating: boolean;
+  simState?: SimulationState;
 }
 
 export const CADEditor: React.FC<CADEditorProps> = ({
@@ -55,6 +66,7 @@ export const CADEditor: React.FC<CADEditorProps> = ({
   onSelectElement,
   onToggleSwitch,
   isSimulating,
+  simState,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(1.0);
@@ -68,6 +80,13 @@ export const CADEditor: React.FC<CADEditorProps> = ({
   const initialMidpointRef = useRef<{ x: number; y: number } | null>(null);
   const initialPanRef = useRef<{ x: number; y: number }>({ x: 40, y: 30 });
   const [isTwoFingerGesture, setIsTwoFingerGesture] = useState<boolean>(false);
+
+  // Modos de Visualización Realista y 3D
+  const [viewMode, setViewMode] = useState<CADViewMode>('realista');
+  const [is3DView, setIs3DView] = useState<boolean>(false);
+  const [learningType, setLearningType] = useState<string | null>(null);
+  // Control de tamaño y visibilidad de etiquetas permanentes
+  const [labelSize, setLabelSize] = useState<'oculto' | 'pequeno' | 'mediano' | 'grande'>('mediano');
 
   // Arrastre de elementos
   const [draggingSymbolId, setDraggingSymbolId] = useState<string | null>(null);
@@ -521,79 +540,208 @@ export const CADEditor: React.FC<CADEditorProps> = ({
       style={{ touchAction: 'none' }}
       className="relative flex-1 h-full w-full bg-slate-950 overflow-hidden select-none cursor-crosshair touch-none"
     >
-      {/* 1. Barra flotante de controles CAD para Escritorio y Tablet (sm y superior) */}
-      <div className="hidden sm:flex absolute top-3 right-3 z-20 items-center gap-1 bg-slate-900/90 border border-slate-800 p-1 rounded-lg shadow-lg backdrop-blur-xs text-xs">
-        <button
-          onClick={() => setIsPanMode(!isPanMode)}
-          title={isPanMode ? 'Desactivar modo mover (volver a edición)' : 'Activar modo mover plano (Pan)'}
-          className={`p-1.5 rounded transition-colors ${
-            isPanMode ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-300 hover:text-white hover:bg-slate-800'
-          }`}
-        >
-          <Hand className="w-4 h-4" />
-        </button>
+      {/* Selector de Modos de Vista Realista / Conexiones / Esquemática y Estudio 3D */}
+      <div className="absolute top-2 sm:top-3 left-2 sm:left-3 z-20 flex flex-wrap items-center gap-1.5 max-w-[85vw] sm:max-w-none">
+        {/* Alternador 2D / 3D */}
+        <div className="flex items-center bg-slate-900/95 border border-slate-700/90 rounded-lg p-0.5 shadow-xl backdrop-blur-md">
+          <button
+            onClick={() => setIs3DView(false)}
+            className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+              !is3DView
+                ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>Plano 2D</span>
+          </button>
+          <button
+            onClick={() => setIs3DView(true)}
+            className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+              is3DView
+                ? 'bg-cyan-500 text-slate-950 font-bold shadow-xs'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Box className="w-3.5 h-3.5" />
+            <span>Estudio 3D</span>
+          </button>
+        </div>
 
-        <div className="h-4 w-px bg-slate-800 mx-0.5" />
+        {/* Selector de los 3 Modos de Visualización Requeridos: REALISTA / SÍMBOLO / APRENDER */}
+        {!is3DView && (
+          <div className="flex items-center bg-slate-900/95 border border-slate-700/90 rounded-lg p-0.5 shadow-xl backdrop-blur-md">
+            <button
+              onClick={() => setViewMode('realista')}
+              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
+                viewMode === 'realista'
+                  ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+              }`}
+              title="Modo Realista: Muestra el aspecto físico real detallado"
+            >
+              REALISTA
+            </button>
+            <button
+              onClick={() => setViewMode('simbolo')}
+              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
+                viewMode === 'simbolo' || viewMode === 'esquematica'
+                  ? 'bg-cyan-500 text-slate-950 font-bold shadow-xs'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+              }`}
+              title="Modo Símbolo: Muestra el símbolo unifilar/multifilar normalizado IRAM"
+            >
+              SÍMBOLO
+            </button>
+            <button
+              onClick={() => setViewMode('aprender')}
+              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
+                viewMode === 'aprender'
+                  ? 'bg-emerald-500 text-slate-950 font-bold shadow-xs'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+              }`}
+              title="Modo Aprender: Muestra modelo físico y símbolo esquemático conectados lado a lado"
+            >
+              APRENDER
+            </button>
+          </div>
+        )}
 
-        <button
-          onClick={() => setZoom((z) => Math.min(2.5, z + 0.15))}
-          title="Acercar vista (Zoom +)"
-          className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded transition-colors"
-        >
-          <ZoomIn className="w-4 h-4" />
-        </button>
-        <span className="text-[11px] font-mono text-slate-400 px-1">
-          {Math.round(zoom * 100)}%
-        </span>
-        <button
-          onClick={() => setZoom((z) => Math.max(0.4, z - 0.15))}
-          title="Alejar vista (Zoom -)"
-          className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded transition-colors"
-        >
-          <ZoomOut className="w-4 h-4" />
-        </button>
+        {/* Control de Tamaño y Visibilidad de Etiquetas Permanentes */}
+        {!is3DView && (
+          <div className="flex items-center bg-slate-900/95 border border-slate-700/90 rounded-lg p-0.5 shadow-xl backdrop-blur-md">
+            <button
+              onClick={() => {
+                const nextSize =
+                  labelSize === 'mediano'
+                    ? 'grande'
+                    : labelSize === 'grande'
+                    ? 'oculto'
+                    : labelSize === 'oculto'
+                    ? 'pequeno'
+                    : 'mediano';
+                setLabelSize(nextSize);
+              }}
+              className="px-2 py-1 text-xs font-medium rounded-md text-slate-300 hover:text-white hover:bg-slate-800/70 transition-all flex items-center gap-1.5"
+              title="Cambiar tamaño o visibilidad de etiquetas encima de cada componente"
+            >
+              <Tag className="w-3.5 h-3.5 text-amber-400" />
+              <span className="capitalize">
+                Etiquetas: <strong className="text-amber-300">{labelSize}</strong>
+              </span>
+            </button>
+          </div>
+        )}
+
+        {/* Botón de Ficha Educativa con Normas */}
         <button
           onClick={() => {
-            setZoom(1.0);
-            setPan({ x: 40, y: 30 });
+            const selectedSym = project.symbols.find((s) => s.id === selectedElementId);
+            setLearningType(selectedSym?.type || 'luminaria');
           }}
-          title="Centrar y ajustar plano"
-          className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded transition-colors"
+          className="px-2.5 py-1 bg-slate-900/95 hover:bg-slate-800 border border-slate-700/90 text-amber-300 hover:text-amber-200 text-xs font-semibold rounded-lg shadow-xl backdrop-blur-md flex items-center gap-1.5 transition-all"
+          title="Ver enciclopedia técnica de normas y especificaciones"
         >
-          <Maximize2 className="w-4 h-4" />
+          <BookOpen className="w-3.5 h-3.5 text-amber-400" />
+          <span className="hidden sm:inline">Enciclopedia</span>
         </button>
+      </div>
 
-        <div className="h-4 w-px bg-slate-800 mx-0.5" />
+      {/* Si está activo el Visor 3D, mostramos el canvas Three.js interactivo */}
+      {is3DView ? (
+        <Room3DViewer
+          project={project}
+          simState={
+            simState || {
+              isRunning: true,
+              isPaused: false,
+              diagnostics: [],
+              activeLamps: new Set(project.symbols.filter((s) => s.state?.isOn).map((s) => s.id)),
+              energizedComponents: new Set(),
+              energizedWires: new Set(),
+              totalSimulatedCurrentAmps: 0,
+              hasShortCircuit: false,
+            }
+          }
+          onToggleSwitch={onToggleSwitch}
+          onSelectSymbol={(id) => onSelectElement('symbol', id)}
+          onOpenLearningModal={(type) => setLearningType(type)}
+        />
+      ) : (
+        <>
+          {/* 1. Barra flotante de controles CAD para Escritorio y Tablet (sm y superior) */}
+          <div className="hidden sm:flex absolute top-3 right-3 z-20 items-center gap-1 bg-slate-900/90 border border-slate-800 p-1 rounded-lg shadow-lg backdrop-blur-xs text-xs">
+            <button
+              onClick={() => setIsPanMode(!isPanMode)}
+              title={isPanMode ? 'Desactivar modo mover (volver a edición)' : 'Activar modo mover plano (Pan)'}
+              className={`p-1.5 rounded transition-colors ${
+                isPanMode ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-300 hover:text-white hover:bg-slate-800'
+              }`}
+            >
+              <Hand className="w-4 h-4" />
+            </button>
 
-        <button
-          onClick={() => setShowGrid(!showGrid)}
-          title="Activar / Desactivar cuadrícula CAD"
-          className={`p-1.5 rounded transition-colors ${
-            showGrid ? 'bg-amber-500/20 text-amber-300' : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <Grid className="w-4 h-4" />
-        </button>
+            <div className="h-4 w-px bg-slate-800 mx-0.5" />
 
-        <button
-          onClick={() => setSnapToGrid(!snapToGrid)}
-          title="Ajuste magnético a la cuadrícula (Snap)"
-          className={`p-1.5 rounded transition-colors ${
-            snapToGrid ? 'bg-amber-500/20 text-amber-300' : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <Magnet className="w-4 h-4" />
-        </button>
+            <button
+              onClick={() => setZoom((z) => Math.min(2.5, z + 0.15))}
+              title="Acercar vista (Zoom +)"
+              className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded transition-colors"
+            >
+              <ZoomIn className="w-4 h-4" />
+            </button>
+            <span className="text-[11px] font-mono text-slate-400 px-1">
+              {Math.round(zoom * 100)}%
+            </span>
+            <button
+              onClick={() => setZoom((z) => Math.max(0.4, z - 0.15))}
+              title="Alejar vista (Zoom -)"
+              className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded transition-colors"
+            >
+              <ZoomOut className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => {
+                setZoom(1.0);
+                setPan({ x: 40, y: 30 });
+              }}
+              title="Centrar y ajustar plano"
+              className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded transition-colors"
+            >
+              <Maximize2 className="w-4 h-4" />
+            </button>
 
-        <button
-          onClick={() => setShowDimensions(!showDimensions)}
-          title="Mostrar / Ocultar cotas y medidas en metros"
-          className={`p-1.5 rounded transition-colors ${
-            showDimensions ? 'bg-amber-500/20 text-amber-300' : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <Ruler className="w-4 h-4" />
-        </button>
+            <div className="h-4 w-px bg-slate-800 mx-0.5" />
+
+            <button
+              onClick={() => setShowGrid(!showGrid)}
+              title="Activar / Desactivar cuadrícula CAD"
+              className={`p-1.5 rounded transition-colors ${
+                showGrid ? 'bg-amber-500/20 text-amber-300' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Grid className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => setSnapToGrid(!snapToGrid)}
+              title="Ajuste magnético a la cuadrícula (Snap)"
+              className={`p-1.5 rounded transition-colors ${
+                snapToGrid ? 'bg-amber-500/20 text-amber-300' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Magnet className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => setShowDimensions(!showDimensions)}
+              title="Mostrar / Ocultar cotas y medidas en metros"
+              className={`p-1.5 rounded transition-colors ${
+                showDimensions ? 'bg-amber-500/20 text-amber-300' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Ruler className="w-4 h-4" />
+            </button>
 
         {selectedElementId && (
           <>
@@ -1028,22 +1176,65 @@ export const CADEditor: React.FC<CADEditorProps> = ({
                   />
                 )}
 
-                {/* Renderizado específico según el tipo de símbolo */}
-                {renderSymbolSVG(sym, isSelected, isLampActive)}
+                {/* Renderizado fotorrealista según el modo de vista elegido */}
+                <RealisticCADSymbolSVG
+                  symbol={sym}
+                  viewMode={viewMode}
+                  isSelected={isSelected}
+                  isOn={isLampActive}
+                />
 
-                {/* Etiqueta técnica debajo del símbolo */}
-                <text
-                  x={0}
-                  y={24}
-                  textAnchor="middle"
-                  fill={isSelected ? '#f59e0b' : '#cbd5e1'}
-                  fontSize="10"
-                  fontWeight="600"
-                  fontFamily="'JetBrains Mono', monospace"
-                  className="pointer-events-none"
-                >
-                  {sym.label}
-                </text>
+                {/* 1. Etiquetas Permanentes en el Plano (Encima del Componente) */}
+                {labelSize !== 'oculto' && (() => {
+                  const labelData = getComponentLabelInfo(sym, project.circuits);
+                  const isLarge = labelSize === 'grande';
+                  const isSmall = labelSize === 'pequeno';
+                  const badgeY = isLarge ? -38 : isSmall ? -28 : -33;
+                  const badgeW = isLarge ? 94 : isSmall ? 70 : 82;
+                  const badgeH = isLarge ? 24 : isSmall ? 18 : 21;
+                  const titleFont = isLarge ? 9 : isSmall ? 7 : 8;
+                  const subFont = isLarge ? 7.5 : isSmall ? 6 : 6.8;
+
+                  return (
+                    <g className="pointer-events-none select-none">
+                      {/* Fondo de placa/badge con esquinas redondeadas y contraste reforzado */}
+                      <rect
+                        x={-badgeW / 2}
+                        y={badgeY - badgeH / 2}
+                        width={badgeW}
+                        height={badgeH}
+                        rx={3}
+                        fill="rgba(15, 23, 42, 0.94)"
+                        stroke={isSelected ? '#f59e0b' : '#334155'}
+                        strokeWidth={isSelected ? 1.5 : 0.8}
+                      />
+                      {/* Título: NOMBRE HABITUAL + TAG TÉCNICO (ej: TÉRMICA Q1, DIFERENCIAL ID1, LÁMPARA L1) */}
+                      <text
+                        x={0}
+                        y={badgeY - 1.5}
+                        textAnchor="middle"
+                        fill={isSelected ? '#f59e0b' : '#f8fafc'}
+                        fontSize={titleFont}
+                        fontWeight="bold"
+                        fontFamily="'JetBrains Mono', monospace"
+                      >
+                        {labelData.bannerTitle}
+                      </text>
+                      {/* Subtítulo: CIRCUITO ASIGNADO (ej: C1 (IUG), C2 (TUG)) */}
+                      <text
+                        x={0}
+                        y={badgeY + (isLarge ? 8 : isSmall ? 6 : 7)}
+                        textAnchor="middle"
+                        fill="#38bdf8"
+                        fontSize={subFont}
+                        fontWeight="600"
+                        fontFamily="'Plus Jakarta Sans', sans-serif"
+                      >
+                        {labelData.circuitInfo}
+                      </text>
+                    </g>
+                  );
+                })()}
 
                 {/* Terminales de conexión */}
                 {sym.terminals.map((term) => {
@@ -1114,231 +1305,32 @@ export const CADEditor: React.FC<CADEditorProps> = ({
           })}
         </g>
       </svg>
-    </div>
+    </>
+  )}
+
+  {/* Ficha de Reconocimiento Físico al Seleccionar Componente (Objetivo 2) */}
+  {selectedElementType === 'symbol' && selectedElementId && (
+    (() => {
+      const selectedSym = project.symbols.find((s) => s.id === selectedElementId);
+      if (!selectedSym) return null;
+      return (
+        <PhysicalComponentCard
+          symbol={selectedSym}
+          onClose={() => onSelectElement(null, null)}
+          onOpenDetailedNormativeModal={(type) => setLearningType(type)}
+        />
+      );
+    })()
+  )}
+
+  {/* Modal de Ficha Educativa Técnica para Principiantes */}
+  {learningType && (
+    <ComponentLearningModal
+      symbolType={learningType}
+      onClose={() => setLearningType(null)}
+    />
+  )}
+</div>
   );
 };
 
-/**
- * Renderiza el dibujo técnico vectorial de cada símbolo eléctrico normalizado
- */
-function renderSymbolSVG(
-  sym: ElectricalSymbol,
-  isSelected: boolean,
-  isLampActive?: boolean
-): React.ReactNode {
-  const strokeColor = isSelected ? '#f59e0b' : '#e2e8f0';
-
-  switch (sym.type) {
-    case 'luminaria':
-      return (
-        <g>
-          <circle
-            cx={0}
-            cy={0}
-            r={14}
-            fill={isLampActive ? '#fef08a' : '#1e293b'}
-            stroke={isLampActive ? '#eab308' : strokeColor}
-            strokeWidth={2}
-          />
-          <line
-            x1={-10}
-            y1={-10}
-            x2={10}
-            y2={10}
-            stroke={isLampActive ? '#ca8a04' : strokeColor}
-            strokeWidth={1.5}
-          />
-          <line
-            x1={-10}
-            y1={10}
-            x2={10}
-            y2={-10}
-            stroke={isLampActive ? '#ca8a04' : strokeColor}
-            strokeWidth={1.5}
-          />
-        </g>
-      );
-
-    case 'interruptor_simple':
-      // Tecla unipolar: círculo con aspa de contacto
-      const isOpen = sym.state?.isOpen !== false;
-      return (
-        <g>
-          <circle cx={0} cy={0} r={12} fill="#0f172a" stroke={strokeColor} strokeWidth={2} />
-          {/* Cuchilla de contacto móvil */}
-          <line
-            x1={-8}
-            y1={0}
-            x2={isOpen ? 6 : 8}
-            y2={isOpen ? -8 : 0}
-            stroke={isOpen ? '#94a3b8' : '#10b981'}
-            strokeWidth={2}
-          />
-          <circle cx={-8} cy={0} r={2} fill={strokeColor} />
-          <circle cx={8} cy={0} r={2} fill={strokeColor} />
-        </g>
-      );
-
-    case 'conmutado':
-      // Llave de combinación: círculo con dos bornes de puente
-      return (
-        <g>
-          <circle cx={0} cy={0} r={13} fill="#0f172a" stroke={strokeColor} strokeWidth={2} />
-          <line
-            x1={-8}
-            y1={0}
-            x2={8}
-            y2={sym.state?.switchPosition === 2 ? 6 : -6}
-            stroke="#a855f7"
-            strokeWidth={2}
-          />
-          <circle cx={-8} cy={0} r={2} fill={strokeColor} />
-          <circle cx={8} cy={-6} r={2} fill="#a855f7" />
-          <circle cx={8} cy={6} r={2} fill="#a855f7" />
-        </g>
-      );
-
-    case 'tomacorriente':
-      // Símbolo IRAM tomacorriente (semicírculo con espigas)
-      return (
-        <g>
-          <path
-            d="M -12 0 A 12 12 0 0 1 12 0 Z"
-            fill={sym.state?.isEnergized ? '#0284c7' : '#1e293b'}
-            stroke={strokeColor}
-            strokeWidth={2}
-          />
-          <line x1={-12} y1={0} x2={12} y2={0} stroke={strokeColor} strokeWidth={2} />
-          {/* 3 patitas de espiga */}
-          <line x1={-5} y1={-4} x2={-2} y2={-8} stroke="#ffffff" strokeWidth={1.5} />
-          <line x1={5} y1={-4} x2={2} y2={-8} stroke="#ffffff" strokeWidth={1.5} />
-          <line x1={0} y1={-2} x2={0} y2={-6} stroke="#10b981" strokeWidth={1.5} />
-        </g>
-      );
-
-    case 'toma_especial':
-      // Tomacorriente 20A reforzado (semicírculo relleno con doble aro)
-      return (
-        <g>
-          <path
-            d="M -14 0 A 14 14 0 0 1 14 0 Z"
-            fill="#d97706"
-            stroke={strokeColor}
-            strokeWidth={2}
-          />
-          <path
-            d="M -9 0 A 9 9 0 0 1 9 0 Z"
-            fill="#0f172a"
-            stroke="#ffffff"
-            strokeWidth={1}
-          />
-          <line x1={-14} y1={0} x2={14} y2={0} stroke={strokeColor} strokeWidth={2} />
-        </g>
-      );
-
-    case 'tablero':
-      // Gabinete de tablero rectangular con riel
-      return (
-        <g>
-          <rect
-            x={-18}
-            y={-14}
-            width={36}
-            height={28}
-            fill="#1e293b"
-            stroke={strokeColor}
-            strokeWidth={2}
-            rx={2}
-          />
-          <line x1={-18} y1={0} x2={18} y2={0} stroke="#3b82f6" strokeWidth={1.5} strokeDasharray="3,2" />
-          <line x1={0} y1={-14} x2={0} y2={14} stroke="#475569" strokeWidth={1} />
-        </g>
-      );
-
-    case 'fuente_ac':
-      // Acometida Red (círculo con onda senoidal)
-      return (
-        <g>
-          <circle cx={0} cy={0} r={14} fill="#0f172a" stroke="#eab308" strokeWidth={2} />
-          <path
-            d="M -7 0 Q -3.5 -6 0 0 Q 3.5 6 7 0"
-            fill="none"
-            stroke="#eab308"
-            strokeWidth={2}
-          />
-        </g>
-      );
-
-    case 'termica':
-      // Térmica: rectángulo bipolar con símbolo de disparo térmico y magnético
-      return (
-        <g>
-          <rect
-            x={-14}
-            y={-14}
-            width={28}
-            height={28}
-            fill="#1e293b"
-            stroke={strokeColor}
-            strokeWidth={2}
-            rx={3}
-          />
-          <line x1={-8} y1={-8} x2={8} y2={8} stroke="#ef4444" strokeWidth={1.5} />
-          <rect x={-4} y={-4} width={8} height={8} fill="#ef4444" />
-        </g>
-      );
-
-    case 'diferencial':
-      // Disyuntor diferencial con botón de prueba
-      return (
-        <g>
-          <rect
-            x={-14}
-            y={-14}
-            width={28}
-            height={28}
-            fill="#1e293b"
-            stroke="#38bdf8"
-            strokeWidth={2}
-            rx={3}
-          />
-          <text x={0} y={3} textAnchor="middle" fill="#38bdf8" fontSize="8" fontWeight="bold">
-            ΔI
-          </text>
-        </g>
-      );
-
-    case 'caja_paso':
-      // Caja octogonal o cuadrada de paso
-      return (
-        <g>
-          <rect
-            x={-12}
-            y={-12}
-            width={24}
-            height={24}
-            fill="#0f172a"
-            stroke={strokeColor}
-            strokeWidth={2}
-          />
-          <circle cx={0} cy={0} r={3} fill="#94a3b8" />
-        </g>
-      );
-
-    case 'puesta_tierra':
-      // Símbolo normalizado de jabalina a tierra
-      return (
-        <g>
-          <line x1={0} y1={-12} x2={0} y2={2} stroke="#16a34a" strokeWidth={2.5} />
-          <line x1={-10} y1={2} x2={10} y2={2} stroke="#16a34a" strokeWidth={2.5} />
-          <line x1={-6} y1={6} x2={6} y2={6} stroke="#16a34a" strokeWidth={2} />
-          <line x1={-2} y1={10} x2={2} y2={10} stroke="#16a34a" strokeWidth={1.5} />
-        </g>
-      );
-
-    default:
-      return (
-        <circle cx={0} cy={0} r={12} fill="#1e293b" stroke={strokeColor} strokeWidth={2} />
-      );
-  }
-}

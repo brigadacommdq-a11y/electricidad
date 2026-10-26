@@ -4,7 +4,7 @@
  * comprobación de continuidad lógica, detección de cortocircuitos y análisis de cargas.
  * Optimizado para pantallas móviles (360px - 430px) y escritorio.
  */
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Play,
   RotateCcw,
@@ -17,8 +17,10 @@ import {
   Zap,
   Info,
   Sliders,
+  BookOpen,
 } from 'lucide-react';
 import { Project, SimulationState, ElectricalSymbol } from '../types/electra';
+import { ComponentLearningModal } from './ComponentLearningModal';
 
 interface SimulatorViewProps {
   project: Project;
@@ -37,6 +39,8 @@ export const SimulatorView: React.FC<SimulatorViewProps> = ({
   onVerifyCircuit,
   onResetSimulation,
 }) => {
+  const [eduModalType, setEduModalType] = useState<string | null>(null);
+
   const switches = project.symbols.filter(
     (s) => s.category === 'comando'
   );
@@ -69,6 +73,14 @@ export const SimulatorView: React.FC<SimulatorViewProps> = ({
           >
             <CheckCircle2 className="w-4 h-4" />
             <span>Verificar Continuidad</span>
+          </button>
+          <button
+            onClick={() => setEduModalType('luminaria')}
+            className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-slate-800 hover:bg-slate-700 active:bg-slate-650 border border-slate-700 text-amber-300 hover:text-amber-200 text-xs rounded-lg transition-colors font-semibold"
+            title="Ver catálogo educativo de componentes con normas AEA"
+          >
+            <BookOpen className="w-4 h-4 text-amber-400" />
+            <span className="hidden sm:inline">Ficha de Componentes</span>
           </button>
           <button
             onClick={onResetSimulation}
@@ -258,6 +270,14 @@ export const SimulatorView: React.FC<SimulatorViewProps> = ({
           </p>
         </div>
       </div>
+
+      {/* Modal Educativo de Componentes */}
+      {eduModalType && (
+        <ComponentLearningModal
+          symbolType={eduModalType}
+          onClose={() => setEduModalType(null)}
+        />
+      )}
     </div>
   );
 };

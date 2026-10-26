@@ -11,6 +11,7 @@ import {
   ShoppingBag,
   GraduationCap,
   FileText,
+  Sparkles,
 } from 'lucide-react';
 
 export type ActiveTab =
@@ -21,6 +22,7 @@ export type ActiveTab =
   | 'tablero'
   | 'materiales'
   | 'practicas'
+  | 'aprender'
   | 'informe';
 
 interface NavigationProps {
@@ -78,9 +80,10 @@ export const Navigation: React.FC<NavigationProps> = ({
     },
     {
       id: 'tablero' as ActiveTab,
-      label: 'Tablero',
+      label: 'Taller de Tableros',
       icon: Cpu,
-      badge: null,
+      badge: '15 Talleres',
+      badgeColor: 'text-amber-400 bg-amber-950/60 border-amber-700/50',
     },
     {
       id: 'materiales' as ActiveTab,
@@ -94,6 +97,13 @@ export const Navigation: React.FC<NavigationProps> = ({
       icon: GraduationCap,
       badge: '10 Talleres',
       badgeColor: 'text-cyan-400 bg-cyan-950/60 border-cyan-700/50',
+    },
+    {
+      id: 'aprender' as ActiveTab,
+      label: 'Aprender Componentes',
+      icon: Sparkles,
+      badge: 'Principiante',
+      badgeColor: 'text-emerald-400 bg-emerald-950/60 border-emerald-700/50',
     },
     {
       id: 'informe' as ActiveTab,

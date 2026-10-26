@@ -57,13 +57,44 @@ export const SYMBOL_TEMPLATES: SymbolTemplate[] = [
     ],
   },
   {
+    type: 'interruptor_general',
+    category: 'tablero',
+    name: 'Interruptor General Automático (IGA)',
+    labelPrefix: 'IGA',
+    defaultPowerWatts: 0,
+    defaultCircuitType: 'OTRO',
+    description: 'Interruptor de cabecera bipolar de corte omnipolar para protección general de la instalación.',
+    normativeRef: 'IRAM 2169 / IEC 60898-1 / AEA 771.17',
+    terminals: [
+      { id: 'L_IN', name: 'L Entrada', type: 'fase', relX: -16, relY: -10 },
+      { id: 'N_IN', name: 'N Entrada', type: 'neutro', relX: -16, relY: 10 },
+      { id: 'L_OUT', name: 'L Salida', type: 'fase', relX: 16, relY: -10 },
+      { id: 'N_OUT', name: 'N Salida', type: 'neutro', relX: 16, relY: 10 },
+    ],
+  },
+  {
+    type: 'dps',
+    category: 'tablero',
+    name: 'Protector de Sobretensiones Transitorias (DPS)',
+    labelPrefix: 'DPS',
+    defaultPowerWatts: 0,
+    defaultCircuitType: 'OTRO',
+    description: 'Descargador de sobretensiones de Clase II con varistores para derivar descargas atmosféricas a tierra.',
+    normativeRef: 'IRAM 2184 / IEC 61643-11',
+    terminals: [
+      { id: 'L', name: 'Borne Fase (L)', type: 'fase', relX: -14, relY: -12 },
+      { id: 'N', name: 'Borne Neutro (N)', type: 'neutro', relX: 14, relY: -12 },
+      { id: 'PE', name: 'Descarga a Tierra (PE)', type: 'tierra', relX: 0, relY: 14 },
+    ],
+  },
+  {
     type: 'termica',
     category: 'proteccion',
-    name: 'Interruptor Termomagnético (PIA)',
-    labelPrefix: 'PIA',
+    name: 'Interruptor Termomagnético (Térmica / PIA)',
+    labelPrefix: 'Q',
     defaultPowerWatts: 0,
     defaultCircuitType: 'IUG',
-    description: 'Protección contra sobrecargas y cortocircuitos (Curva C, 10A/16A/20A).',
+    description: 'Protección contra sobrecargas y cortocircuitos (Curva C, 10A/16A/20A/25A).',
     normativeRef: 'IRAM 2169 / IEC 60898',
     terminals: [
       { id: 'L_IN', name: 'L Entrada', type: 'fase', relX: -16, relY: -10 },
@@ -79,8 +110,8 @@ export const SYMBOL_TEMPLATES: SymbolTemplate[] = [
     labelPrefix: 'ID',
     defaultPowerWatts: 0,
     defaultCircuitType: 'OTRO',
-    description: 'Protección para personas contra contactos directos e indirectos (30 mA).',
-    normativeRef: 'IRAM-NM-IEC 61008',
+    description: 'Protección para personas contra contactos directos e indirectos (30 mA). Botón de test mensual.',
+    normativeRef: 'IRAM-NM-IEC 61008 / AEA 771.18',
     terminals: [
       { id: 'L_IN', name: 'L Entrada', type: 'fase', relX: -16, relY: -10 },
       { id: 'N_IN', name: 'N Entrada', type: 'neutro', relX: -16, relY: 10 },
@@ -246,13 +277,93 @@ export const SYMBOL_TEMPLATES: SymbolTemplate[] = [
     type: 'puesta_tierra',
     category: 'canalizacion',
     name: 'Electrodo de Puesta a Tierra (Jabalina)',
-    labelPrefix: 'PAT',
+    labelPrefix: 'J',
     defaultPowerWatts: 0,
     defaultCircuitType: 'OTRO',
     description: 'Jabalina de acero-cobre hincada en suelo con cámara de inspección y tomacable.',
     normativeRef: 'IRAM 2309 / AEA 771.3',
     terminals: [
       { id: 'PE', name: 'Borne Principal Tierra (BPT)', type: 'tierra', relX: 0, relY: -14 },
+    ],
+  },
+  {
+    type: 'barra_pe',
+    category: 'canalizacion',
+    name: 'Barra Colectora de Tierra (PE)',
+    labelPrefix: 'BPE',
+    defaultPowerWatts: 0,
+    defaultCircuitType: 'OTRO',
+    description: 'Barra de latón de puesta a tierra con tornillos para colectar todos los conductores verdes-amarillos.',
+    normativeRef: 'AEA 90364-7-771.18.2',
+    terminals: [
+      { id: 'PE_IN', name: 'Jabalina Entrada', type: 'tierra', relX: -16, relY: 0 },
+      { id: 'PE_1', name: 'Derivación PE 1', type: 'tierra', relX: -5, relY: 0 },
+      { id: 'PE_2', name: 'Derivación PE 2', type: 'tierra', relX: 5, relY: 0 },
+      { id: 'PE_OUT', name: 'Derivación PE 3', type: 'tierra', relX: 16, relY: 0 },
+    ],
+  },
+  {
+    type: 'barra_n',
+    category: 'canalizacion',
+    name: 'Barra Repartidora de Neutro (N)',
+    labelPrefix: 'BN',
+    defaultPowerWatts: 0,
+    defaultCircuitType: 'OTRO',
+    description: 'Barra aislada para distribución de neutro del circuito hacia las distintas cargas.',
+    normativeRef: 'AEA 90364-7-771.18.2',
+    terminals: [
+      { id: 'N_IN', name: 'Neutro Entrada', type: 'neutro', relX: -16, relY: 0 },
+      { id: 'N_1', name: 'Neutro C1', type: 'neutro', relX: -5, relY: 0 },
+      { id: 'N_2', name: 'Neutro C2', type: 'neutro', relX: 5, relY: 0 },
+      { id: 'N_OUT', name: 'Neutro C3', type: 'neutro', relX: 16, relY: 0 },
+    ],
+  },
+  {
+    type: 'peine_distribucion',
+    category: 'tablero',
+    name: 'Peine de Conexión Bipolar DIN',
+    labelPrefix: 'PDB',
+    defaultPowerWatts: 0,
+    defaultCircuitType: 'OTRO',
+    description: 'Barra puente bipolar aislada para alimentación en paralelo de interruptores en riel DIN.',
+    normativeRef: 'IEC 60947-7-1',
+    terminals: [
+      { id: 'L_IN', name: 'Fase Entrada', type: 'fase', relX: -16, relY: -8 },
+      { id: 'N_IN', name: 'Neutro Entrada', type: 'neutro', relX: -16, relY: 8 },
+      { id: 'L_OUT', name: 'Fase Salida', type: 'fase', relX: 16, relY: -8 },
+      { id: 'N_OUT', name: 'Neutro Salida', type: 'neutro', relX: 16, relY: 8 },
+    ],
+  },
+  {
+    type: 'contactor_modular',
+    category: 'tablero',
+    name: 'Contactor Modular DIN (25A)',
+    labelPrefix: 'KM',
+    defaultPowerWatts: 5,
+    defaultCircuitType: 'OTRO',
+    description: 'Contactor electromagnético para automatización de cargas de potencia (iluminación, bombas, calefacción).',
+    normativeRef: 'IEC 61095 / IRAM 2169',
+    terminals: [
+      { id: 'A1', name: 'Bobina A1 (Fase)', type: 'fase', relX: -16, relY: -12 },
+      { id: 'A2', name: 'Bobina A2 (Neutro)', type: 'neutro', relX: -16, relY: 12 },
+      { id: 'L_IN', name: 'Contacto 1 Entrada', type: 'fase', relX: 0, relY: -12 },
+      { id: 'L_OUT', name: 'Contacto 2 Salida', type: 'fase', relX: 0, relY: 12 },
+    ],
+  },
+  {
+    type: 'temporizador',
+    category: 'tablero',
+    name: 'Temporizador Horario / Timer DIN',
+    labelPrefix: 'KT',
+    defaultPowerWatts: 2,
+    defaultCircuitType: 'OTRO',
+    description: 'Interruptor horario programable mecánico/digital para iluminación exterior o bombas de filtrado.',
+    normativeRef: 'IEC 60730-2-7',
+    terminals: [
+      { id: 'L', name: 'Alimentación L', type: 'fase', relX: -16, relY: -10 },
+      { id: 'N', name: 'Alimentación N', type: 'neutro', relX: -16, relY: 10 },
+      { id: 'COM', name: 'Común Relé', type: 'fase', relX: 16, relY: -10 },
+      { id: 'NO', name: 'Salida NA Relé', type: 'retorno', relX: 16, relY: 10 },
     ],
   },
 ];
@@ -304,3 +415,131 @@ export const WIRE_COLOR_MAP: Record<ConductorType, { stroke: string; label: stri
   retorno: { stroke: '#f59e0b', label: 'Retorno (Gris / Blanco / Negro)', code: 'R' },
   puente: { stroke: '#a855f7', label: 'Puente Combinación (Violeta / Naranja)', code: 'P' },
 };
+
+export interface ComponentLabelInfo {
+  commonName: string;      // ej: "TÉRMICA", "DIFERENCIAL", "LÁMPARA", "INTERRUPTOR", "TOMACORRIENTE", "JABALINA"
+  technicalTag: string;    // ej: "Q1", "ID1", "L1", "S1", "T1", "J1"
+  bannerTitle: string;     // ej: "TÉRMICA Q1", "DIFERENCIAL ID1", "LÁMPARA L1"
+  circuitInfo: string;     // ej: "C1 (IUG)"
+  normativeCode: string;   // ej: "IRAM 2169"
+}
+
+export function getComponentLabelInfo(symbol: ElectricalSymbol, circuits?: { id: string; name: string; type: string }[]): ComponentLabelInfo {
+  const type = symbol.type;
+  let common = 'DISPOSITIVO';
+  let defaultPrefix = 'X';
+
+  switch (type) {
+    case 'termica':
+      common = 'TÉRMICA';
+      defaultPrefix = 'Q';
+      break;
+    case 'diferencial':
+      common = 'DIFERENCIAL';
+      defaultPrefix = 'ID';
+      break;
+    case 'interruptor_general':
+      common = 'INT. GENERAL';
+      defaultPrefix = 'IGA';
+      break;
+    case 'dps':
+      common = 'DPS';
+      defaultPrefix = 'DPS';
+      break;
+    case 'luminaria':
+      common = 'LÁMPARA';
+      defaultPrefix = 'L';
+      break;
+    case 'interruptor_simple':
+      common = 'INTERRUPTOR';
+      defaultPrefix = 'S';
+      break;
+    case 'interruptor_doble':
+      common = 'INT. DOBLE';
+      defaultPrefix = 'S';
+      break;
+    case 'conmutado':
+      common = 'CONMUTADOR';
+      defaultPrefix = 'SC';
+      break;
+    case 'pulsador':
+      common = 'PULSADOR';
+      defaultPrefix = 'PUL';
+      break;
+    case 'tomacorriente':
+      common = 'TOMACORRIENTE';
+      defaultPrefix = 'T';
+      break;
+    case 'toma_especial':
+      common = 'TOMA 20A';
+      defaultPrefix = 'TUE';
+      break;
+    case 'puesta_tierra':
+      common = 'JABALINA';
+      defaultPrefix = 'J';
+      break;
+    case 'barra_pe':
+      common = 'BARRA TIERRA';
+      defaultPrefix = 'BPE';
+      break;
+    case 'barra_n':
+      common = 'BARRA NEUTRO';
+      defaultPrefix = 'BN';
+      break;
+    case 'peine_distribucion':
+      common = 'PEINE DIN';
+      defaultPrefix = 'PDB';
+      break;
+    case 'caja_paso':
+      common = 'CAJA PASO';
+      defaultPrefix = 'CP';
+      break;
+    case 'contactor_modular':
+      common = 'CONTACTOR';
+      defaultPrefix = 'KM';
+      break;
+    case 'temporizador':
+      common = 'TIMER';
+      defaultPrefix = 'KT';
+      break;
+    case 'tablero':
+      common = 'TABLERO';
+      defaultPrefix = 'TSG';
+      break;
+    case 'fuente_ac':
+      common = 'RED 220V';
+      defaultPrefix = 'RED';
+      break;
+    case 'timbre':
+      common = 'TIMBRE';
+      defaultPrefix = 'TIM';
+      break;
+    case 'ventilador':
+      common = 'VENTILADOR';
+      defaultPrefix = 'VENT';
+      break;
+  }
+
+  // Si symbol.label existe usarlo, si no componer defaultPrefix + id
+  const technicalTag = symbol.label || defaultPrefix;
+  const bannerTitle = `${common} ${technicalTag}`;
+
+  let circuitInfo = 'Sin circuito';
+  if (symbol.circuitId) {
+    const c = circuits?.find(ci => ci.id === symbol.circuitId);
+    circuitInfo = c ? `${c.id} (${c.type})` : symbol.circuitId;
+  } else if (symbol.category === 'tablero' || symbol.type === 'puesta_tierra') {
+    circuitInfo = 'Acometida / PAT';
+  }
+
+  const template = SYMBOL_TEMPLATES.find(t => t.type === symbol.type);
+  const normativeCode = template?.normativeRef || 'AEA 90364';
+
+  return {
+    commonName: common,
+    technicalTag,
+    bannerTitle,
+    circuitInfo,
+    normativeCode,
+  };
+}
