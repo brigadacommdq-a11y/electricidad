@@ -1,0 +1,8 @@
+{
+  "name": "Remix ELECTRA PLAN",
+  "description": "Software profesional de diseño, cálculo, simulación y aprendizaje de instalaciones eléctricas residenciales y comerciales.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
