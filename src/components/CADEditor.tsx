@@ -65,6 +65,9 @@ export const CADEditor: React.FC<CADEditorProps> = ({
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const initialPinchDistRef = useRef<number | null>(null);
   const initialZoomRef = useRef<number>(1.0);
+  const initialMidpointRef = useRef<{ x: number; y: number } | null>(null);
+  const initialPanRef = useRef<{ x: number; y: number }>({ x: 40, y: 30 });
+  const [isTwoFingerGesture, setIsTwoFingerGesture] = useState<boolean>(false);
 
   // Arrastre de elementos
   const [draggingSymbolId, setDraggingSymbolId] = useState<string | null>(null);
@@ -226,17 +229,30 @@ export const CADEditor: React.FC<CADEditorProps> = ({
     setDraggingSymbolId(null);
   };
 
-  // Manejo de eventos Touch (móvil y tablet)
+  // Manejo de eventos Touch avanzados (móvil y tablet):
+  // Soporta pellizco para zoom (Pinch to Zoom) y arrastre con dos dedos (Two-Finger Pan)
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
-      // Gesto de pellizco para acercar/alejar con 2 dedos
+    if (e.touches.length >= 2) {
+      // Prioridad máxima a la navegación con dos dedos: cancelar arrastre de símbolos
+      setDraggingSymbolId(null);
+      setIsPanning(false);
+      setIsTwoFingerGesture(true);
+
       const t1 = e.touches[0];
       const t2 = e.touches[1];
       const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
-      initialPinchDistRef.current = dist;
+      const midX = (t1.clientX + t2.clientX) / 2;
+      const midY = (t1.clientY + t2.clientY) / 2;
+
+      initialPinchDistRef.current = Math.max(dist, 10);
       initialZoomRef.current = zoom;
-      setIsPanning(false);
+      initialMidpointRef.current = { x: midX, y: midY };
+      initialPanRef.current = { ...pan };
     } else if (e.touches.length === 1) {
+      setIsTwoFingerGesture(false);
+      initialPinchDistRef.current = null;
+      initialMidpointRef.current = null;
+
       const touch = e.touches[0];
       touchStartRef.current = { x: touch.clientX, y: touch.clientY };
       const coords = getSVGCoordinates(touch.clientX, touch.clientY);
@@ -250,15 +266,44 @@ export const CADEditor: React.FC<CADEditorProps> = ({
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (e.touches.length === 2 && initialPinchDistRef.current !== null) {
-      // Zoom progresivo con dos dedos
+    if (e.touches.length >= 2) {
       const t1 = e.touches[0];
       const t2 = e.touches[1];
       const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+      const midX = (t1.clientX + t2.clientX) / 2;
+      const midY = (t1.clientY + t2.clientY) / 2;
+
+      // Si por alguna razón no estaban inicializados los refs de dos dedos
+      if (initialPinchDistRef.current === null || initialMidpointRef.current === null) {
+        initialPinchDistRef.current = Math.max(dist, 10);
+        initialZoomRef.current = zoom;
+        initialMidpointRef.current = { x: midX, y: midY };
+        initialPanRef.current = { ...pan };
+        return;
+      }
+
+      // 1. Zoom por pellizco (Pinch to Zoom)
       const ratio = dist / initialPinchDistRef.current;
-      const nextZoom = Math.min(2.5, Math.max(0.4, Number((initialZoomRef.current * ratio).toFixed(2))));
+      const nextZoom = Math.min(3.0, Math.max(0.35, Number((initialZoomRef.current * ratio).toFixed(2))));
+
+      // 2. Paneo con dos dedos (Two-Finger Pan) y anclaje al punto focal medio
+      const rect = containerRef.current?.getBoundingClientRect() || { left: 0, top: 0 };
+      const startMidRelX = initialMidpointRef.current.x - rect.left;
+      const startMidRelY = initialMidpointRef.current.y - rect.top;
+      const currMidRelX = midX - rect.left;
+      const currMidRelY = midY - rect.top;
+
+      // Coordenada en espacio SVG del punto medio inicial
+      const worldX = (startMidRelX - initialPanRef.current.x) / initialZoomRef.current;
+      const worldY = (startMidRelY - initialPanRef.current.y) / initialZoomRef.current;
+
+      // Nuevo pan para que el punto en espacio SVG siga bajo el centro táctil actual
+      const newPanX = currMidRelX - worldX * nextZoom;
+      const newPanY = currMidRelY - worldY * nextZoom;
+
       setZoom(nextZoom);
-    } else if (e.touches.length === 1) {
+      setPan({ x: Math.round(newPanX), y: Math.round(newPanY) });
+    } else if (e.touches.length === 1 && !isTwoFingerGesture) {
       const touch = e.touches[0];
       const coords = getSVGCoordinates(touch.clientX, touch.clientY);
       setCursorPos(coords);
@@ -278,11 +323,29 @@ export const CADEditor: React.FC<CADEditorProps> = ({
     }
   };
 
-  const handleTouchEnd = () => {
-    touchStartRef.current = null;
-    initialPinchDistRef.current = null;
-    setIsPanning(false);
-    setDraggingSymbolId(null);
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      // Transición suave si se levanta 1 dedo y queda otro
+      initialPinchDistRef.current = null;
+      initialMidpointRef.current = null;
+      setIsTwoFingerGesture(false);
+
+      const remainingTouch = e.touches[0];
+      touchStartRef.current = { x: remainingTouch.clientX, y: remainingTouch.clientY };
+      if (isPanMode) {
+        setStartPan({ x: remainingTouch.clientX - pan.x, y: remainingTouch.clientY - pan.y });
+      } else {
+        setIsPanning(false);
+      }
+    } else if (e.touches.length === 0) {
+      // Fin del contacto táctil
+      touchStartRef.current = null;
+      initialPinchDistRef.current = null;
+      initialMidpointRef.current = null;
+      setIsTwoFingerGesture(false);
+      setIsPanning(false);
+      setDraggingSymbolId(null);
+    }
   };
 
   // Conectar terminales con cable
@@ -399,12 +462,59 @@ export const CADEditor: React.FC<CADEditorProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   });
 
+  // Prevenir que el navegador móvil (Android Chrome / Safari) intercepte los gestos con zoom o scroll nativo de la página
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleNativeTouchMove = (e: TouchEvent) => {
+      // Si hay 2 o más dedos en la pantalla o está activo el modo mover, prevenir el scroll/zoom del navegador
+      if (e.touches.length >= 2 || isPanMode) {
+        if (e.cancelable) {
+          e.preventDefault();
+        }
+      }
+    };
+
+    container.addEventListener('touchmove', handleNativeTouchMove, { passive: false });
+    return () => {
+      container.removeEventListener('touchmove', handleNativeTouchMove);
+    };
+  }, [isPanMode]);
+
+  // Soporte de rueda de ratón y trackpad (Zoom focal con Ctrl / Paneo normal)
+  const handleWheel = (e: React.WheelEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+      const nextZoom = Math.min(3.0, Math.max(0.35, Number((zoom * zoomFactor).toFixed(2))));
+
+      const rect = containerRef.current?.getBoundingClientRect() || { left: 0, top: 0 };
+      const mouseRelX = e.clientX - rect.left;
+      const mouseRelY = e.clientY - rect.top;
+      const worldX = (mouseRelX - pan.x) / zoom;
+      const worldY = (mouseRelY - pan.y) / zoom;
+
+      const newPanX = mouseRelX - worldX * nextZoom;
+      const newPanY = mouseRelY - worldY * nextZoom;
+
+      setZoom(nextZoom);
+      setPan({ x: Math.round(newPanX), y: Math.round(newPanY) });
+    } else {
+      setPan((prev) => ({
+        x: Math.round(prev.x - e.deltaX),
+        y: Math.round(prev.y - e.deltaY),
+      }));
+    }
+  };
+
   return (
     <div
       ref={containerRef}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
+      onWheel={handleWheel}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -578,6 +688,14 @@ export const CADEditor: React.FC<CADEditorProps> = ({
         <div className="sm:hidden absolute top-2 left-2 z-20 bg-amber-500 text-slate-950 font-bold text-[11px] px-2.5 py-1.5 rounded-lg shadow-lg flex items-center gap-1.5 animate-pulse">
           <Hand className="w-3.5 h-3.5 shrink-0" />
           <span>Modo Mover: Desliza 1 dedo</span>
+        </div>
+      )}
+
+      {/* Indicador visual de retroalimentación de gestos de 2 dedos en móvil */}
+      {isTwoFingerGesture && (
+        <div className="sm:hidden absolute top-2 left-1/2 -translate-x-1/2 z-30 bg-slate-900/95 border border-amber-500/80 text-amber-300 font-mono text-[11px] font-bold px-3 py-1.5 rounded-full shadow-2xl flex items-center gap-1.5 backdrop-blur-md animate-pulse pointer-events-none">
+          <Hand className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+          <span>Paneo y Zoom 2 Dedos ({Math.round(zoom * 100)}%)</span>
         </div>
       )}
 
