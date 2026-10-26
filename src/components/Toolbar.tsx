@@ -16,13 +16,14 @@ import {
   Plus,
   Box,
   Compass,
+  X,
 } from 'lucide-react';
 import { SYMBOL_TEMPLATES, SymbolTemplate } from '../services/symbolCatalog';
 import { Circuit, ConductorType } from '../types/electra';
 
 export type CADTool = 'select' | 'room' | 'wall' | 'door' | 'window' | 'wire' | 'place_symbol';
 
-interface ToolbarProps {
+export interface ToolbarProps {
   activeTool: CADTool;
   onSelectTool: (tool: CADTool) => void;
   selectedTemplateType: string | null;
@@ -33,6 +34,7 @@ interface ToolbarProps {
   activeWireType: ConductorType;
   onSelectWireType: (type: ConductorType) => void;
   onAddPresetRoom: (roomName: string, w: number, h: number) => void;
+  onClose?: () => void;
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({
@@ -46,6 +48,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   activeWireType,
   onSelectWireType,
   onAddPresetRoom,
+  onClose,
 }) => {
   const [activeCategory, setActiveCategory] = useState<'utilizacion' | 'comando' | 'tablero' | 'canalizacion' | 'habitaciones'>('utilizacion');
 
@@ -63,7 +66,24 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   });
 
   return (
-    <aside className="no-print w-72 bg-slate-900 border-r border-slate-800 flex flex-col h-full text-slate-200 select-none text-xs">
+    <aside className="no-print w-full lg:w-72 bg-slate-900 border-r border-slate-800 flex flex-col h-full text-slate-200 select-none text-xs">
+      {/* Cabecera para móvil cuando se abre en modal o drawer */}
+      {onClose && (
+        <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-slate-800 bg-slate-950/80">
+          <div className="flex items-center gap-2 text-white font-bold text-sm">
+            <Compass className="w-4 h-4 text-amber-400" />
+            <span>Herramientas & Catálogo</span>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-full transition-colors"
+            aria-label="Cerrar catálogo"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Herramientas Principales de Edición */}
       <div className="p-2 border-b border-slate-800 bg-slate-900/60">
         <div className="text-[10px] uppercase font-semibold text-slate-400 px-1 mb-1.5 flex items-center justify-between">

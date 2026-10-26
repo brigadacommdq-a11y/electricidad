@@ -20,6 +20,7 @@ import { BOMView } from './components/BOMView';
 import { PracticesView } from './components/PracticesView';
 import { ReportView } from './components/ReportView';
 import { HelpModal } from './components/HelpModal';
+import { Compass, Sliders, X, GitCommit } from 'lucide-react';
 
 const STORAGE_KEY = 'electra_plan_project_v1';
 
@@ -60,6 +61,8 @@ export default function App() {
   // Estado de guardado y modales
   const [saveStatus, setSaveStatus] = useState<string>('Guardado');
   const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false);
+  const [isMobileToolbarOpen, setIsMobileToolbarOpen] = useState<boolean>(false);
+  const [isMobilePropertiesOpen, setIsMobilePropertiesOpen] = useState<boolean>(false);
 
   // Motor de simulación en tiempo real
   const { simState, updatedSymbols, updatedWires } = useMemo(() => {
@@ -370,23 +373,25 @@ export default function App() {
       {/* 3. Área de Contenido Principal según la Pestaña Activa */}
       <main className="flex-1 flex overflow-hidden relative">
         {activeTab === 'plano' && (
-          <div className="flex-1 flex w-full h-full">
-            {/* Barra lateral de herramientas */}
-            <Toolbar
-              activeTool={activeTool}
-              onSelectTool={setActiveTool}
-              selectedTemplateType={selectedTemplateType}
-              onSelectTemplate={setSelectedTemplateType}
-              selectedCircuitId={selectedCircuitId}
-              onSelectCircuit={setSelectedCircuitId}
-              circuits={project.circuits}
-              activeWireType={activeWireType}
-              onSelectWireType={setActiveWireType}
-              onAddPresetRoom={handleAddPresetRoom}
-            />
+          <div className="flex-1 flex w-full h-full relative overflow-hidden">
+            {/* Barra lateral de herramientas (Escritorio / Pantallas grandes >= lg) */}
+            <div className="hidden lg:flex h-full shrink-0">
+              <Toolbar
+                activeTool={activeTool}
+                onSelectTool={setActiveTool}
+                selectedTemplateType={selectedTemplateType}
+                onSelectTemplate={setSelectedTemplateType}
+                selectedCircuitId={selectedCircuitId}
+                onSelectCircuit={setSelectedCircuitId}
+                circuits={project.circuits}
+                activeWireType={activeWireType}
+                onSelectWireType={setActiveWireType}
+                onAddPresetRoom={handleAddPresetRoom}
+              />
+            </div>
 
-            {/* Lienzo CAD */}
-            <div className="flex-1 flex flex-col h-full overflow-hidden">
+            {/* Lienzo CAD Central (Ocupa el 100% en celular para máxima área de trabajo) */}
+            <div className="flex-1 flex flex-col h-full overflow-hidden relative min-w-0">
               <CADEditor
                 project={{
                   ...project,
@@ -408,6 +413,62 @@ export default function App() {
                 isSimulating={true}
               />
 
+              {/* Barra flotante inferior de acciones para Móvil (< lg) */}
+              <div className="lg:hidden absolute bottom-11 left-2 right-2 z-20 flex items-center justify-between gap-1.5 pointer-events-auto">
+                <button
+                  onClick={() => setIsMobileToolbarOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-slate-900/95 active:bg-slate-800 border border-slate-700/90 text-slate-100 rounded-xl shadow-xl backdrop-blur-md text-xs font-semibold"
+                >
+                  <Compass className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span className="truncate max-w-[120px]">
+                    {activeTool === 'place_symbol' && selectedTemplateType
+                      ? `Símbolo: ${selectedTemplateType}`
+                      : activeTool === 'wire'
+                      ? 'Cablear'
+                      : activeTool === 'room'
+                      ? 'Ambiente'
+                      : 'Herramientas'}
+                  </span>
+                </button>
+
+                {/* Si la herramienta activa es cable, selector rápido de conductor */}
+                {activeTool === 'wire' && (
+                  <div className="flex items-center gap-1 bg-slate-900/95 border border-slate-700 p-1 rounded-xl shadow-xl backdrop-blur-md">
+                    {(['fase', 'neutro', 'tierra', 'retorno'] as ConductorType[]).map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => setActiveWireType(t)}
+                        className={`px-1.5 py-1 text-[10px] rounded font-bold uppercase transition-all ${
+                          activeWireType === t
+                            ? 'bg-amber-500 text-slate-950 shadow-xs'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        {t === 'tierra' ? 'PE' : t === 'retorno' ? 'Ret' : t.slice(0, 3)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  onClick={() => setIsMobilePropertiesOpen(true)}
+                  className={`flex items-center gap-1.5 px-3 py-2 border rounded-xl shadow-xl backdrop-blur-md text-xs font-semibold transition-all ${
+                    selectedElementId
+                      ? 'bg-amber-500 text-slate-950 border-amber-400 ring-2 ring-amber-400/30'
+                      : 'bg-slate-900/95 active:bg-slate-800 border-slate-700/90 text-slate-200'
+                  }`}
+                >
+                  <Sliders className="w-4 h-4 shrink-0" />
+                  <span className="truncate max-w-[110px]">
+                    {selectedElementId
+                      ? selectedElementType === 'symbol'
+                        ? 'Editar'
+                        : 'Propiedades'
+                      : 'Propiedades'}
+                  </span>
+                </button>
+              </div>
+
               {/* Barra inferior de diagnósticos */}
               <DiagnosticsBar
                 simState={simState}
@@ -418,28 +479,109 @@ export default function App() {
               />
             </div>
 
-            {/* Panel lateral derecho de propiedades */}
-            <PropertiesPanel
-              project={project}
-              selectedElementType={selectedElementType}
-              selectedElementId={selectedElementId}
-              onUpdateProject={updateProject}
-              onDeleteSelected={() => {
-                if (!selectedElementId) return;
-                updateProject((prev) => ({
-                  ...prev,
-                  symbols: prev.symbols.filter((s) => s.id !== selectedElementId),
-                  wires: prev.wires.filter(
-                    (w) => w.id !== selectedElementId && w.fromComponentId !== selectedElementId && w.toComponentId !== selectedElementId
-                  ),
-                  rooms: prev.rooms.filter((r) => r.id !== selectedElementId),
-                  architecturalElements: prev.architecturalElements.filter((a) => a.id !== selectedElementId),
-                }));
-                setSelectedElementId(null);
-                setSelectedElementType(null);
-              }}
-              onToggleSwitch={handleToggleSwitch}
-            />
+            {/* Panel lateral derecho de propiedades (Escritorio >= lg) */}
+            <div className="hidden lg:flex h-full shrink-0">
+              <PropertiesPanel
+                project={project}
+                selectedElementType={selectedElementType}
+                selectedElementId={selectedElementId}
+                onUpdateProject={updateProject}
+                onDeleteSelected={() => {
+                  if (!selectedElementId) return;
+                  updateProject((prev) => ({
+                    ...prev,
+                    symbols: prev.symbols.filter((s) => s.id !== selectedElementId),
+                    wires: prev.wires.filter(
+                      (w) => w.id !== selectedElementId && w.fromComponentId !== selectedElementId && w.toComponentId !== selectedElementId
+                    ),
+                    rooms: prev.rooms.filter((r) => r.id !== selectedElementId),
+                    architecturalElements: prev.architecturalElements.filter((a) => a.id !== selectedElementId),
+                  }));
+                  setSelectedElementId(null);
+                  setSelectedElementType(null);
+                }}
+                onToggleSwitch={handleToggleSwitch}
+              />
+            </div>
+
+            {/* Drawer Desplegable Móvil de Herramientas CAD */}
+            {isMobileToolbarOpen && (
+              <div
+                role="dialog"
+                aria-modal="true"
+                className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex flex-col justify-end lg:hidden animate-fade-in"
+                onClick={() => setIsMobileToolbarOpen(false)}
+              >
+                <div
+                  className="bg-slate-900 border-t border-slate-700 rounded-t-2xl max-h-[85vh] h-[80vh] flex flex-col overflow-hidden shadow-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Toolbar
+                    activeTool={activeTool}
+                    onSelectTool={(tool) => {
+                      setActiveTool(tool);
+                      if (tool !== 'place_symbol') {
+                        setIsMobileToolbarOpen(false);
+                      }
+                    }}
+                    selectedTemplateType={selectedTemplateType}
+                    onSelectTemplate={(tpl) => {
+                      setSelectedTemplateType(tpl);
+                      setIsMobileToolbarOpen(false); // Cierra automáticamente para que el usuario pueda colocar el símbolo en el plano
+                    }}
+                    selectedCircuitId={selectedCircuitId}
+                    onSelectCircuit={setSelectedCircuitId}
+                    circuits={project.circuits}
+                    activeWireType={activeWireType}
+                    onSelectWireType={setActiveWireType}
+                    onAddPresetRoom={(name, w, h) => {
+                      handleAddPresetRoom(name, w, h);
+                      setIsMobileToolbarOpen(false);
+                    }}
+                    onClose={() => setIsMobileToolbarOpen(false)}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Drawer Desplegable Móvil de Propiedades Técnicas */}
+            {isMobilePropertiesOpen && (
+              <div
+                role="dialog"
+                aria-modal="true"
+                className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex flex-col justify-end lg:hidden animate-fade-in"
+                onClick={() => setIsMobilePropertiesOpen(false)}
+              >
+                <div
+                  className="bg-slate-900 border-t border-slate-700 rounded-t-2xl max-h-[85vh] h-[80vh] flex flex-col overflow-hidden shadow-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <PropertiesPanel
+                    project={project}
+                    selectedElementType={selectedElementType}
+                    selectedElementId={selectedElementId}
+                    onUpdateProject={updateProject}
+                    onDeleteSelected={() => {
+                      if (!selectedElementId) return;
+                      updateProject((prev) => ({
+                        ...prev,
+                        symbols: prev.symbols.filter((s) => s.id !== selectedElementId),
+                        wires: prev.wires.filter(
+                          (w) => w.id !== selectedElementId && w.fromComponentId !== selectedElementId && w.toComponentId !== selectedElementId
+                        ),
+                        rooms: prev.rooms.filter((r) => r.id !== selectedElementId),
+                        architecturalElements: prev.architecturalElements.filter((a) => a.id !== selectedElementId),
+                      }));
+                      setSelectedElementId(null);
+                      setSelectedElementType(null);
+                      setIsMobilePropertiesOpen(false);
+                    }}
+                    onToggleSwitch={handleToggleSwitch}
+                    onClose={() => setIsMobilePropertiesOpen(false)}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         )}
 

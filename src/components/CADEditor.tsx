@@ -14,6 +14,9 @@ import {
   RotateCw,
   Power,
   Zap,
+  Hand,
+  MousePointer,
+  X,
 } from 'lucide-react';
 import {
   Project,
@@ -58,6 +61,10 @@ export const CADEditor: React.FC<CADEditorProps> = ({
   const [pan, setPan] = useState({ x: 40, y: 30 });
   const [isPanning, setIsPanning] = useState(false);
   const [startPan, setStartPan] = useState({ x: 0, y: 0 });
+  const [isPanMode, setIsPanMode] = useState(false);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const initialPinchDistRef = useRef<number | null>(null);
+  const initialZoomRef = useRef<number>(1.0);
 
   // Arrastre de elementos
   const [draggingSymbolId, setDraggingSymbolId] = useState<string | null>(null);
@@ -188,9 +195,9 @@ export const CADEditor: React.FC<CADEditorProps> = ({
     }
   };
 
-  // Manejo de Pan
+  // Manejo de Pan con ratón
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button === 1 || e.altKey || (e.button === 0 && e.shiftKey)) {
+    if (isPanMode || e.button === 1 || e.altKey || (e.button === 0 && e.shiftKey)) {
       setIsPanning(true);
       setStartPan({ x: e.clientX - pan.x, y: e.clientY - pan.y });
     }
@@ -215,6 +222,65 @@ export const CADEditor: React.FC<CADEditorProps> = ({
   };
 
   const handleMouseUp = () => {
+    setIsPanning(false);
+    setDraggingSymbolId(null);
+  };
+
+  // Manejo de eventos Touch (móvil y tablet)
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      // Gesto de pellizco para acercar/alejar con 2 dedos
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+      initialPinchDistRef.current = dist;
+      initialZoomRef.current = zoom;
+      setIsPanning(false);
+    } else if (e.touches.length === 1) {
+      const touch = e.touches[0];
+      touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+      const coords = getSVGCoordinates(touch.clientX, touch.clientY);
+      setCursorPos(coords);
+
+      if (isPanMode || activeTool === 'select') {
+        setIsPanning(true);
+        setStartPan({ x: touch.clientX - pan.x, y: touch.clientY - pan.y });
+      }
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && initialPinchDistRef.current !== null) {
+      // Zoom progresivo con dos dedos
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+      const ratio = dist / initialPinchDistRef.current;
+      const nextZoom = Math.min(2.5, Math.max(0.4, Number((initialZoomRef.current * ratio).toFixed(2))));
+      setZoom(nextZoom);
+    } else if (e.touches.length === 1) {
+      const touch = e.touches[0];
+      const coords = getSVGCoordinates(touch.clientX, touch.clientY);
+      setCursorPos(coords);
+
+      if (isPanning) {
+        setPan({ x: touch.clientX - startPan.x, y: touch.clientY - startPan.y });
+      } else if (draggingSymbolId) {
+        onUpdateProject((prev) => ({
+          ...prev,
+          symbols: prev.symbols.map((sym) =>
+            sym.id === draggingSymbolId
+              ? { ...sym, x: coords.x - dragOffset.x, y: coords.y - dragOffset.y }
+              : sym
+          ),
+        }));
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    touchStartRef.current = null;
+    initialPinchDistRef.current = null;
     setIsPanning(false);
     setDraggingSymbolId(null);
   };
@@ -339,10 +405,26 @@ export const CADEditor: React.FC<CADEditorProps> = ({
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
-      className="relative flex-1 h-full bg-slate-950 overflow-hidden select-none cursor-crosshair"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      style={{ touchAction: 'none' }}
+      className="relative flex-1 h-full w-full bg-slate-950 overflow-hidden select-none cursor-crosshair touch-none"
     >
-      {/* Barra flotante de controles CAD */}
-      <div className="absolute top-3 right-3 z-20 flex items-center gap-1 bg-slate-900/90 border border-slate-800 p-1 rounded-md shadow-lg backdrop-blur-xs text-xs">
+      {/* 1. Barra flotante de controles CAD para Escritorio y Tablet (sm y superior) */}
+      <div className="hidden sm:flex absolute top-3 right-3 z-20 items-center gap-1 bg-slate-900/90 border border-slate-800 p-1 rounded-lg shadow-lg backdrop-blur-xs text-xs">
+        <button
+          onClick={() => setIsPanMode(!isPanMode)}
+          title={isPanMode ? 'Desactivar modo mover (volver a edición)' : 'Activar modo mover plano (Pan)'}
+          className={`p-1.5 rounded transition-colors ${
+            isPanMode ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-300 hover:text-white hover:bg-slate-800'
+          }`}
+        >
+          <Hand className="w-4 h-4" />
+        </button>
+
+        <div className="h-4 w-px bg-slate-800 mx-0.5" />
+
         <button
           onClick={() => setZoom((z) => Math.min(2.5, z + 0.15))}
           title="Acercar vista (Zoom +)"
@@ -426,16 +508,91 @@ export const CADEditor: React.FC<CADEditorProps> = ({
         )}
       </div>
 
+      {/* 2. Dock Flotante Táctil para Móviles (Android / iOS en pantallas pequeñas) */}
+      <div className="flex sm:hidden absolute top-2 right-2 z-20 flex-col items-end gap-1.5">
+        {/* Grupo de zoom y navegación táctil */}
+        <div className="flex flex-col bg-slate-900/95 border border-slate-700/80 rounded-xl shadow-xl backdrop-blur-md overflow-hidden">
+          <button
+            onClick={() => setIsPanMode(!isPanMode)}
+            title="Alternar entre mover plano y editar"
+            className={`p-2.5 flex items-center justify-center transition-colors border-b border-slate-800 ${
+              isPanMode ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-300 active:bg-slate-800'
+            }`}
+          >
+            <Hand className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setZoom((z) => Math.min(2.5, z + 0.2))}
+            title="Acercar vista"
+            className="p-2.5 text-slate-200 active:bg-slate-800 active:text-white border-b border-slate-800 flex items-center justify-center"
+          >
+            <ZoomIn className="w-4 h-4" />
+          </button>
+          <div className="text-[9px] font-mono font-bold text-center py-1 text-slate-400 border-b border-slate-800">
+            {Math.round(zoom * 100)}%
+          </div>
+          <button
+            onClick={() => setZoom((z) => Math.max(0.4, z - 0.2))}
+            title="Alejar vista"
+            className="p-2.5 text-slate-200 active:bg-slate-800 active:text-white border-b border-slate-800 flex items-center justify-center"
+          >
+            <ZoomOut className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => {
+              setZoom(1.0);
+              setPan({ x: 40, y: 30 });
+            }}
+            title="Centrar plano"
+            className="p-2.5 text-slate-200 active:bg-slate-800 active:text-white flex items-center justify-center"
+          >
+            <Maximize2 className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Acciones si hay elemento seleccionado en móvil */}
+        {selectedElementId && (
+          <div className="flex flex-col bg-slate-900/95 border border-slate-700/80 rounded-xl shadow-xl backdrop-blur-md overflow-hidden">
+            {selectedElementType === 'symbol' && (
+              <button
+                onClick={handleRotateSelected}
+                title="Rotar símbolo"
+                className="p-2.5 text-amber-400 active:bg-slate-800 border-b border-slate-800 flex items-center justify-center"
+              >
+                <RotateCw className="w-4 h-4" />
+              </button>
+            )}
+            <button
+              onClick={handleDeleteSelected}
+              title="Eliminar elemento"
+              className="p-2.5 text-red-400 active:bg-slate-800 flex items-center justify-center"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Cartel flotante en móvil cuando Modo Mover está activo */}
+      {isPanMode && (
+        <div className="sm:hidden absolute top-2 left-2 z-20 bg-amber-500 text-slate-950 font-bold text-[11px] px-2.5 py-1.5 rounded-lg shadow-lg flex items-center gap-1.5 animate-pulse">
+          <Hand className="w-3.5 h-3.5 shrink-0" />
+          <span>Modo Mover: Desliza 1 dedo</span>
+        </div>
+      )}
+
       {/* Indicador de ayuda en modo cablear */}
       {wiringStart && (
-        <div className="absolute top-3 left-3 z-20 bg-amber-950/90 border border-amber-600/80 text-amber-200 px-3 py-1.5 rounded-md text-xs shadow-lg flex items-center gap-2">
-          <Zap className="w-4 h-4 text-amber-400 animate-pulse" />
-          <span>
-            Cableando desde terminal <strong>{wiringStart.terminalId}</strong>. Haz clic en el terminal de destino o pulsa Esc para cancelar.
-          </span>
+        <div className="absolute top-2 left-2 right-12 sm:right-auto sm:max-w-md z-30 bg-amber-950/95 border border-amber-500 text-amber-200 p-2.5 sm:px-3 sm:py-1.5 rounded-xl text-xs shadow-xl flex items-center justify-between gap-2 backdrop-blur-xs">
+          <div className="flex items-center gap-2 min-w-0">
+            <Zap className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
+            <span className="text-[11px] sm:text-xs truncate">
+              Cableando desde <strong>{wiringStart.terminalId}</strong>. Toca destino.
+            </span>
+          </div>
           <button
             onClick={() => setWiringStart(null)}
-            className="text-[10px] underline ml-2 hover:text-white"
+            className="px-2 py-1 bg-amber-800/80 hover:bg-amber-700 text-amber-100 rounded text-[11px] font-bold shrink-0"
           >
             Cancelar
           </button>
@@ -721,7 +878,7 @@ export const CADEditor: React.FC<CADEditorProps> = ({
                 key={sym.id}
                 transform={`translate(${sym.x}, ${sym.y}) rotate(${sym.rotation})`}
                 onMouseDown={(e) => {
-                  if (activeTool === 'select') {
+                  if (activeTool === 'select' && !isPanMode) {
                     e.stopPropagation();
                     onSelectElement('symbol', sym.id);
                     setDraggingSymbolId(sym.id);
@@ -729,7 +886,17 @@ export const CADEditor: React.FC<CADEditorProps> = ({
                     setDragOffset({ x: coords.x - sym.x, y: coords.y - sym.y });
                   }
                 }}
-                className={`${activeTool === 'select' ? 'cursor-grab' : 'cursor-pointer'}`}
+                onTouchStart={(e) => {
+                  if (activeTool === 'select' && !isPanMode && e.touches.length === 1) {
+                    e.stopPropagation();
+                    onSelectElement('symbol', sym.id);
+                    setDraggingSymbolId(sym.id);
+                    const touch = e.touches[0];
+                    const coords = getSVGCoordinates(touch.clientX, touch.clientY);
+                    setDragOffset({ x: coords.x - sym.x, y: coords.y - sym.y });
+                  }
+                }}
+                className={`${activeTool === 'select' && !isPanMode ? 'cursor-grab' : 'cursor-pointer'}`}
               >
                 {/* Resplandor si es lámpara encendida */}
                 {isLampActive && (
@@ -772,10 +939,14 @@ export const CADEditor: React.FC<CADEditorProps> = ({
                       key={term.id}
                       transform={`translate(${term.relX}, ${term.relY})`}
                       onClick={(e) => handleTerminalClick(e, sym, term.id, termAbsX, termAbsY)}
+                      onTouchEnd={(e) => {
+                        e.stopPropagation();
+                        handleTerminalClick(e as any, sym, term.id, termAbsX, termAbsY);
+                      }}
                       className="cursor-pointer group"
                     >
-                      {/* Área de clic ampliada */}
-                      <circle cx={0} cy={0} r={10} fill="transparent" />
+                      {/* Área de clic ampliada para dedos en pantallas táctiles (36px diámetro) */}
+                      <circle cx={0} cy={0} r={18} fill="transparent" />
 
                       {/* Borne físico */}
                       <circle
@@ -794,7 +965,7 @@ export const CADEditor: React.FC<CADEditorProps> = ({
                   );
                 })}
 
-                {/* Botón interactivo directo sobre interruptores para accionarlos con 1 clic */}
+                {/* Botón interactivo directo sobre interruptores para accionarlos con 1 toque o clic */}
                 {sym.category === 'comando' && (
                   <g
                     transform="translate(18, -18)"
@@ -802,8 +973,13 @@ export const CADEditor: React.FC<CADEditorProps> = ({
                       e.stopPropagation();
                       onToggleSwitch(sym.id);
                     }}
-                    className="cursor-pointer hover:scale-110 transition-transform"
+                    onTouchEnd={(e) => {
+                      e.stopPropagation();
+                      onToggleSwitch(sym.id);
+                    }}
+                    className="cursor-pointer hover:scale-110 active:scale-125 transition-transform"
                   >
+                    <circle cx={0} cy={0} r={15} fill="transparent" />
                     <circle
                       cx={0}
                       cy={0}

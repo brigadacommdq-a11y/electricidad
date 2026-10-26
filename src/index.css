@@ -1,12 +1,25 @@
 @import "tailwindcss";
 
 @layer base {
+  html, body {
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: transparent;
+  }
   body {
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   }
   code, kbd, samp, pre {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
   }
+}
+
+/* Hide scrollbar utility for clean mobile horizontal scroll */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* CAD Grid Pattern */

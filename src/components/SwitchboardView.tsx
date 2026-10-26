@@ -64,22 +64,22 @@ export const SwitchboardView: React.FC<SwitchboardViewProps> = ({ project, onUpd
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-slate-950 p-6 text-slate-100 space-y-6">
+    <div className="flex-1 overflow-y-auto bg-slate-950 p-3 sm:p-6 text-slate-100 space-y-4 sm:space-y-6 max-w-full overflow-x-hidden">
       {/* Cabecera */}
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-5 rounded-xl shadow-lg">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 bg-slate-900 border border-slate-800 p-3.5 sm:p-5 rounded-xl shadow-lg">
         <div>
-          <div className="flex items-center gap-2 text-amber-400 font-bold text-lg">
-            <Cpu className="w-5 h-5" />
+          <div className="flex items-center gap-2 text-amber-400 font-bold text-base sm:text-lg">
+            <Cpu className="w-5 h-5 shrink-0" />
             <h2>{switchboard.name} — Tablero Seccional</h2>
           </div>
           <p className="text-xs text-slate-400 mt-1 max-w-2xl leading-relaxed">
-            Representación sobre Riel DIN normalizado (35 mm). Incluye Interruptor General (IGA), Interruptor Diferencial (ID 30mA) con prueba funcional de disparo y PIAs seccionales.
+            Representación sobre Riel DIN normalizado (35 mm). Incluye IGA, Interruptor Diferencial (ID 30mA) con botón TEST y PIAs seccionales.
           </p>
         </div>
 
         <button
           onClick={handleResetAll}
-          className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-200 hover:text-white rounded-lg transition-colors"
+          className="flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 active:bg-slate-650 border border-slate-700 text-xs text-slate-200 hover:text-white rounded-lg transition-colors shrink-0"
         >
           <RotateCcw className="w-3.5 h-3.5" />
           <span>Restablecer Protecciones</span>
@@ -87,14 +87,19 @@ export const SwitchboardView: React.FC<SwitchboardViewProps> = ({ project, onUpd
       </div>
 
       {/* Armario / Gabinete de Tablero Visual */}
-      <div className="bg-slate-900 border-2 border-slate-700 p-6 rounded-2xl shadow-2xl relative">
-        <div className="flex items-center justify-between text-xs text-slate-400 pb-4 border-b border-slate-800 font-mono">
+      <div className="bg-slate-900 border-2 border-slate-700 p-3 sm:p-6 rounded-xl sm:rounded-2xl shadow-2xl relative">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] sm:text-xs text-slate-400 pb-3 sm:pb-4 border-b border-slate-800 font-mono gap-1">
           <span>GABINETE DIN 35mm · GRADO IP40</span>
           <span>UBICACIÓN: {switchboard.location || 'Acceso Principal'}</span>
         </div>
 
+        {/* Indicador de desplazamiento para móviles */}
+        <div className="sm:hidden text-[10px] text-amber-400/90 font-medium py-1.5 flex items-center gap-1">
+          <span>↔ Desliza horizontalmente para ver todos los interruptores del riel</span>
+        </div>
+
         {/* Riel DIN Metálico */}
-        <div className="my-8 relative">
+        <div className="my-4 sm:my-8 relative">
           {/* El perfil metálico de fondo del Riel DIN */}
           <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-9 bg-gradient-to-b from-slate-400 via-slate-300 to-slate-500 rounded border border-slate-600 shadow-inner z-0">
             {/* Ranuras de fijación del riel */}
@@ -106,7 +111,7 @@ export const SwitchboardView: React.FC<SwitchboardViewProps> = ({ project, onUpd
           </div>
 
           {/* Módulos de Protecciones Montados sobre el Riel */}
-          <div className="relative z-10 flex items-center gap-2.5 overflow-x-auto py-4 px-3">
+          <div className="relative z-10 flex items-center gap-2.5 overflow-x-auto py-4 px-2 sm:px-3 touch-pan-x" style={{ WebkitOverflowScrolling: 'touch' }}>
             {switchboard.components.map((comp: SwitchboardComponent) => {
               const isClosed = comp.state === 'closed';
               const isTripped = comp.state === 'tripped';

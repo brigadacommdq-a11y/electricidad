@@ -36,6 +36,19 @@ export const Navigation: React.FC<NavigationProps> = ({
   activeLampsCount,
   hasErrors,
 }) => {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const activeTabRef = React.useRef<HTMLButtonElement>(null);
+
+  React.useEffect(() => {
+    if (activeTabRef.current) {
+      activeTabRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'center',
+      });
+    }
+  }, [activeTab]);
+
   const tabs = [
     {
       id: 'plano' as ActiveTab,
@@ -91,34 +104,42 @@ export const Navigation: React.FC<NavigationProps> = ({
   ];
 
   return (
-    <nav className="no-print bg-slate-900/95 border-b border-slate-800 px-3 py-1 flex items-center overflow-x-auto scrollbar-none gap-1">
-      {tabs.map((tab) => {
-        const Icon = tab.icon;
-        const isActive = activeTab === tab.id;
-        return (
-          <button
-            key={tab.id}
-            onClick={() => onTabChange(tab.id)}
-            className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition-colors ${
-              isActive
-                ? 'bg-slate-800 text-amber-400 font-semibold shadow-xs border border-slate-700/80'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-            }`}
-          >
-            <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-amber-400' : 'text-slate-400'}`} />
-            <span>{tab.label}</span>
-            {tab.badge && (
-              <span
-                className={`text-[10px] px-1.5 py-0.2 rounded border font-normal ${
-                  tab.badgeColor || 'text-slate-300 bg-slate-800 border-slate-700'
-                }`}
-              >
-                {tab.badge}
-              </span>
-            )}
-          </button>
-        );
-      })}
-    </nav>
+    <div className="relative no-print bg-slate-900/95 border-b border-slate-800 shrink-0">
+      <nav
+        ref={containerRef}
+        aria-label="Pestañas de la aplicación"
+        className="px-2 sm:px-3 py-1.5 sm:py-1 flex items-center overflow-x-auto scrollbar-none gap-1 sm:gap-1.5 touch-pan-x"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              ref={isActive ? activeTabRef : undefined}
+              onClick={() => onTabChange(tab.id)}
+              className={`flex items-center gap-2 px-3 sm:px-3 py-2 sm:py-1.5 text-xs font-medium rounded-lg sm:rounded-md whitespace-nowrap transition-all shrink-0 min-h-[38px] sm:min-h-[32px] ${
+                isActive
+                  ? 'bg-slate-800 text-amber-400 font-bold shadow-xs border border-slate-700/80 ring-1 ring-amber-400/20'
+                  : 'text-slate-300 hover:text-white active:bg-slate-800/60 hover:bg-slate-800/40'
+              }`}
+            >
+              <Icon className={`w-4 h-4 sm:w-3.5 sm:h-3.5 ${isActive ? 'text-amber-400' : 'text-slate-400'}`} />
+              <span className="text-xs">{tab.label}</span>
+              {tab.badge && (
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded border font-semibold ${
+                    tab.badgeColor || 'text-slate-300 bg-slate-800 border-slate-700'
+                  }`}
+                >
+                  {tab.badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </nav>
+    </div>
   );
 };

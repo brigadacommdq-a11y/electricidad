@@ -11,16 +11,18 @@ import {
   Power,
   Layers,
   Info,
+  X,
 } from 'lucide-react';
 import { Project, ElectricalSymbol, Wire, Room, ArchElement } from '../types/electra';
 
-interface PropertiesPanelProps {
+export interface PropertiesPanelProps {
   project: Project;
   selectedElementType: 'symbol' | 'wire' | 'room' | 'wall' | null;
   selectedElementId: string | null;
   onUpdateProject: (updater: (prev: Project) => Project) => void;
   onDeleteSelected: () => void;
   onToggleSwitch: (symbolId: string) => void;
+  onClose?: () => void;
 }
 
 export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
@@ -30,6 +32,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   onUpdateProject,
   onDeleteSelected,
   onToggleSwitch,
+  onClose,
 }) => {
   const selectedSymbol =
     selectedElementType === 'symbol'
@@ -47,22 +50,33 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
       : null;
 
   return (
-    <aside className="no-print w-72 bg-slate-900 border-l border-slate-800 flex flex-col h-full text-slate-200 select-none text-xs">
+    <aside className="no-print w-full lg:w-72 bg-slate-900 border-l border-slate-800 flex flex-col h-full text-slate-200 select-none text-xs">
       {/* Cabecera del panel */}
       <div className="p-3 border-b border-slate-800 flex items-center justify-between bg-slate-900/80">
-        <div className="flex items-center gap-2 text-slate-200 font-semibold">
+        <div className="flex items-center gap-2 text-slate-200 font-semibold text-sm">
           <Sliders className="w-4 h-4 text-amber-400" />
           <span>Propiedades</span>
         </div>
-        {selectedElementId && (
-          <button
-            onClick={onDeleteSelected}
-            title="Eliminar elemento"
-            className="p-1 text-red-400 hover:text-red-300 hover:bg-slate-800 rounded transition-colors"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        )}
+        <div className="flex items-center gap-1.5">
+          {selectedElementId && (
+            <button
+              onClick={onDeleteSelected}
+              title="Eliminar elemento"
+              className="p-1.5 text-red-400 hover:text-red-300 hover:bg-slate-800 rounded transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="p-1.5 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-full transition-colors"
+              aria-label="Cerrar propiedades"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-3.5">

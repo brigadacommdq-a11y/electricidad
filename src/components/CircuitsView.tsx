@@ -2,6 +2,7 @@
  * ELECTRA PLAN — Módulo de Gestión de Circuitos Eléctricos
  * Configuración de circuitos derivados (IUG, TUG, TUE, etc.), secciones de cable,
  * asignación de protecciones y control de número máximo de bocas según AEA 90364.
+ * Optimizado para pantallas móviles (360px - 430px) y escritorio.
  */
 import React, { useState } from 'react';
 import {
@@ -91,32 +92,69 @@ export const CircuitsView: React.FC<CircuitsViewProps> = ({ project, onUpdatePro
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-slate-950 p-6 text-slate-100 space-y-6">
-      {/* Cabecera */}
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-5 rounded-xl shadow-lg">
+    <div className="flex-1 overflow-y-auto bg-slate-950 p-3 sm:p-6 text-slate-100 space-y-4 sm:space-y-6 max-w-full overflow-x-hidden">
+      {/* Cabecera Responsiva */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-xl shadow-lg">
         <div>
-          <div className="flex items-center gap-2 text-amber-400 font-bold text-lg">
-            <Network className="w-5 h-5" />
-            <h2>Distribución y Esquema de Circuitos Derivados</h2>
+          <div className="flex items-center gap-2 text-amber-400 font-bold text-base sm:text-lg">
+            <Network className="w-5 h-5 shrink-0" />
+            <h2>Distribución y Esquema de Circuitos</h2>
           </div>
           <p className="text-xs text-slate-400 mt-1 max-w-2xl leading-relaxed">
-            Según AEA 90364-771, una vivienda debe contar con al menos 2 circuitos independientes (1 de IUG y 1 de TUG) con protección termomagnética calibrada para cada sección.
+            Reglamentación AEA 90364-771: Mínimo 2 circuitos independientes (IUG y TUG) con protección calibrada para cada sección.
           </p>
         </div>
 
         <button
           onClick={handleAddCircuit}
-          className="flex items-center gap-2 px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-lg shadow-md transition-colors"
+          className="flex items-center justify-center gap-2 px-3.5 py-2.5 bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold text-xs rounded-lg shadow-md transition-all self-start sm:self-auto shrink-0"
         >
           <Plus className="w-4 h-4" />
           <span>Agregar Circuito</span>
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Lista de Circuitos a la Izquierda */}
-        <div className="lg:col-span-1 space-y-3">
-          <span className="text-xs font-semibold text-slate-300 px-1">Circuitos del Proyecto ({project.circuits.length})</span>
+      {/* Selector Rápido de Circuitos para Móvil (Horizontal Carousel) */}
+      <div className="block lg:hidden bg-slate-900/90 border border-slate-800 p-2.5 rounded-xl">
+        <div className="flex items-center justify-between text-xs text-slate-400 mb-2 px-1">
+          <span className="font-semibold text-slate-300">Seleccionar circuito para editar:</span>
+          <span className="text-[11px] text-amber-400">{project.circuits.length} circuitos</span>
+        </div>
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+          {project.circuits.map((circ) => {
+            const isSelected = selectedCircuit?.id === circ.id;
+            return (
+              <button
+                key={circ.id}
+                onClick={() => setSelectedCircuitId(circ.id)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold shrink-0 transition-all ${
+                  isSelected
+                    ? 'bg-amber-500 text-slate-950 shadow-md ring-1 ring-amber-400'
+                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                <div
+                  className="w-2.5 h-2.5 rounded-full shrink-0"
+                  style={{ backgroundColor: circ.color || '#3b82f6' }}
+                />
+                <span>{circ.id}</span>
+                <span className={`text-[10px] px-1 py-0.2 rounded font-sans ${isSelected ? 'bg-amber-600 text-white' : 'bg-slate-900 text-slate-400'}`}>
+                  {circ.type}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        {/* Lista de Circuitos a la Izquierda (En móvil va después o se usa el carrusel superior) */}
+        <div className="lg:col-span-1 space-y-3 order-2 lg:order-1">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-xs font-semibold text-slate-300">Todos los Circuitos ({project.circuits.length})</span>
+            <span className="text-[11px] text-slate-500 hidden sm:inline">Haz clic para editar</span>
+          </div>
+
           <div className="space-y-2">
             {project.circuits.map((circ) => {
               const isSelected = selectedCircuit?.id === circ.id;
@@ -128,7 +166,7 @@ export const CircuitsView: React.FC<CircuitsViewProps> = ({ project, onUpdatePro
                 <div
                   key={circ.id}
                   onClick={() => setSelectedCircuitId(circ.id)}
-                  className={`p-3.5 rounded-xl border text-left cursor-pointer transition-all ${
+                  className={`p-3 sm:p-3.5 rounded-xl border text-left cursor-pointer transition-all ${
                     isSelected
                       ? 'bg-slate-900 border-amber-500/80 shadow-md ring-1 ring-amber-500/30'
                       : 'bg-slate-900/60 border-slate-800 hover:bg-slate-850'
@@ -137,7 +175,7 @@ export const CircuitsView: React.FC<CircuitsViewProps> = ({ project, onUpdatePro
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div
-                        className="w-3 h-3 rounded-full"
+                        className="w-3 h-3 rounded-full shrink-0"
                         style={{ backgroundColor: circ.color || '#3b82f6' }}
                       />
                       <span className="font-bold font-mono text-sm text-white">{circ.id}</span>
@@ -156,9 +194,10 @@ export const CircuitsView: React.FC<CircuitsViewProps> = ({ project, onUpdatePro
                             e.stopPropagation();
                             handleDeleteCircuit(circ.id);
                           }}
-                          className="p-1 text-slate-500 hover:text-red-400 rounded transition-colors"
+                          aria-label={`Eliminar circuito ${circ.id}`}
+                          className="p-1.5 text-slate-500 hover:text-red-400 active:text-red-300 rounded transition-colors"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       )}
                     </div>
@@ -181,23 +220,24 @@ export const CircuitsView: React.FC<CircuitsViewProps> = ({ project, onUpdatePro
 
         {/* Panel de Configuración del Circuito Seleccionado */}
         {selectedCircuit && (
-          <div className="lg:col-span-2 bg-slate-900 border border-slate-800 p-6 rounded-xl space-y-5">
+          <div className="lg:col-span-2 bg-slate-900 border border-slate-800 p-4 sm:p-6 rounded-xl space-y-4 sm:space-y-5 order-1 lg:order-2">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div>
                 <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider">
                   Configuración Técnica
                 </span>
-                <h3 className="text-lg font-bold text-white mt-0.5">
-                  {selectedCircuit.id} — {selectedCircuit.name}
+                <h3 className="text-base sm:text-lg font-bold text-white mt-0.5 flex items-center gap-2">
+                  <span className="font-mono text-amber-400">{selectedCircuit.id}</span>
+                  <span className="truncate max-w-[200px] sm:max-w-md">{selectedCircuit.name}</span>
                 </h3>
               </div>
               <div
-                className="w-5 h-5 rounded-full border border-white/20"
+                className="w-6 h-6 rounded-full border-2 border-white/20 shrink-0"
                 style={{ backgroundColor: selectedCircuit.color }}
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <label className="text-xs text-slate-400 block mb-1">Nombre del Circuito</label>
                 <input
@@ -304,18 +344,21 @@ export const CircuitsView: React.FC<CircuitsViewProps> = ({ project, onUpdatePro
 
               <div>
                 <label className="text-xs text-slate-400 block mb-1">Color de Representación en Plano</label>
-                <input
-                  type="color"
-                  value={selectedCircuit.color || '#3b82f6'}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    onUpdateProject((prev) => ({
-                      ...prev,
-                      circuits: prev.circuits.map((c) => (c.id === selectedCircuit.id ? { ...c, color: val } : c)),
-                    }));
-                  }}
-                  className="w-full h-9 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 cursor-pointer"
-                />
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={selectedCircuit.color || '#3b82f6'}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      onUpdateProject((prev) => ({
+                        ...prev,
+                        circuits: prev.circuits.map((c) => (c.id === selectedCircuit.id ? { ...c, color: val } : c)),
+                      }));
+                    }}
+                    className="w-12 h-9 bg-slate-950 border border-slate-700 rounded-lg p-1 cursor-pointer shrink-0"
+                  />
+                  <span className="text-xs font-mono text-slate-400">{selectedCircuit.color || '#3b82f6'}</span>
+                </div>
               </div>
             </div>
 
@@ -324,7 +367,7 @@ export const CircuitsView: React.FC<CircuitsViewProps> = ({ project, onUpdatePro
               <h4 className="text-xs font-semibold text-slate-200 mb-2">
                 Bocas y Cargas Asignadas ({project.symbols.filter((s) => s.circuitId === selectedCircuit.id).length})
               </h4>
-              <div className="bg-slate-950/80 rounded-lg border border-slate-800 p-3 max-h-48 overflow-y-auto space-y-1.5">
+              <div className="bg-slate-950/80 rounded-lg border border-slate-800 p-2.5 sm:p-3 max-h-48 overflow-y-auto space-y-1.5">
                 {project.symbols.filter((s) => s.circuitId === selectedCircuit.id).length === 0 ? (
                   <p className="text-xs text-slate-500 text-center py-2">
                     No hay elementos del plano vinculados a este circuito. Selecciona un símbolo en el editor CAD y asígnalo aquí.
@@ -335,14 +378,14 @@ export const CircuitsView: React.FC<CircuitsViewProps> = ({ project, onUpdatePro
                     .map((sym) => (
                       <div
                         key={sym.id}
-                        className="flex items-center justify-between text-xs py-1 px-2 bg-slate-900 rounded border border-slate-800/60"
+                        className="flex items-center justify-between text-xs py-1.5 px-2 bg-slate-900 rounded border border-slate-800/60"
                       >
-                        <div className="flex items-center gap-2">
-                          <Zap className="w-3.5 h-3.5 text-amber-400" />
+                        <div className="flex items-center gap-2 truncate pr-2">
+                          <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                           <span className="font-mono font-semibold text-slate-200">{sym.label}</span>
-                          <span className="text-slate-400">{sym.name}</span>
+                          <span className="text-slate-400 truncate">{sym.name}</span>
                         </div>
-                        <span className="font-mono text-emerald-400">{sym.powerWatts} W</span>
+                        <span className="font-mono text-emerald-400 shrink-0 font-medium">{sym.powerWatts} W</span>
                       </div>
                     ))
                 )}
