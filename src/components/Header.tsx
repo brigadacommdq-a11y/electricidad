@@ -25,6 +25,8 @@ import { Project } from '../types/electra';
 interface HeaderProps {
   project: Project;
   onNewProject: () => void;
+  onOpenProjectManager: () => void;
+  onOpenAcometidaModal: () => void;
   onOpenDemo: () => void;
   onSave: () => void;
   onUndo: () => void;
@@ -44,6 +46,8 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   project,
   onNewProject,
+  onOpenProjectManager,
+  onOpenAcometidaModal,
   onOpenDemo,
   onSave,
   onUndo,
@@ -133,19 +137,38 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="hidden md:flex items-center flex-wrap gap-1.5">
           <button
             onClick={onNewProject}
-            title="Crear nuevo proyecto en blanco"
+            title="Crear nuevo proyecto en blanco desde cero"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-slate-950 bg-amber-500 hover:bg-amber-400 rounded transition-colors shadow-xs"
+          >
+            <FilePlus className="w-3.5 h-3.5" />
+            <span className="hidden lg:inline">Nuevo</span>
+          </button>
+
+          <button
+            onClick={onOpenProjectManager}
+            title="Gestor de proyectos: ver viviendas guardadas, duplicar y administrar"
             className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-750 border border-slate-700/80 rounded transition-colors"
           >
-            <FilePlus className="w-3.5 h-3.5 text-slate-400" />
-            <span className="hidden lg:inline">Nuevo</span>
+            <FolderOpen className="w-3.5 h-3.5 text-amber-400" />
+            <span>Proyectos</span>
+          </button>
+
+          <button
+            onClick={onOpenAcometidaModal}
+            title="Ver esquema interactivo de Acometida, Pilar de Medición y Puesta a Tierra"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-amber-300 hover:text-amber-200 bg-amber-950/40 hover:bg-amber-900/50 border border-amber-800/60 rounded transition-colors"
+          >
+            <Zap className="w-3.5 h-3.5 text-amber-400" />
+            <span className="hidden xl:inline">Acometida & Pilar</span>
+            <span className="xl:hidden">Pilar</span>
           </button>
 
           <button
             onClick={onOpenDemo}
             title="Cargar proyecto de demostración (Vivienda 2 ambientes)"
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-amber-300 hover:text-amber-200 bg-amber-950/40 hover:bg-amber-900/50 border border-amber-800/60 rounded transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:text-slate-100 bg-slate-800 hover:bg-slate-750 border border-slate-700 rounded transition-colors"
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
             <span>Ejemplo</span>
           </button>
 
@@ -346,15 +369,43 @@ export const Header: React.FC<HeaderProps> = ({
 
               <button
                 onClick={() => {
+                  onOpenProjectManager();
+                  setIsMobileMenuOpen(false);
+                }}
+                className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-800 active:bg-slate-700 border border-slate-700 text-left text-slate-200"
+              >
+                <FolderOpen className="w-4 h-4 text-amber-400 shrink-0" />
+                <div>
+                  <div className="font-semibold text-white">Proyectos</div>
+                  <div className="text-[10px] text-slate-400">Abrir y administrar</div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => {
+                  onOpenAcometidaModal();
+                  setIsMobileMenuOpen(false);
+                }}
+                className="flex items-center gap-2.5 p-3 rounded-xl bg-amber-950/40 active:bg-amber-900/50 border border-amber-800/60 text-left text-amber-200"
+              >
+                <Zap className="w-4 h-4 text-amber-400 shrink-0" />
+                <div>
+                  <div className="font-semibold text-amber-300">Acometida & Pilar</div>
+                  <div className="text-[10px] text-amber-400/80">Red, pilar y PAT</div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => {
                   onNewProject();
                   setIsMobileMenuOpen(false);
                 }}
                 className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-800 active:bg-slate-700 border border-slate-700 text-left text-slate-200"
               >
-                <FilePlus className="w-4 h-4 text-slate-400 shrink-0" />
+                <FilePlus className="w-4 h-4 text-emerald-400 shrink-0" />
                 <div>
                   <div className="font-semibold text-white">Nuevo Proyecto</div>
-                  <div className="text-[10px] text-slate-400">En blanco</div>
+                  <div className="text-[10px] text-slate-400">Vivienda vacía</div>
                 </div>
               </button>
 

@@ -23,6 +23,7 @@ import {
   Box,
   Tag,
   AlertOctagon,
+  AlertTriangle,
   Crosshair,
   GitBranch,
 } from 'lucide-react';
@@ -115,6 +116,39 @@ export const CADEditor: React.FC<CADEditorProps> = ({
   // Arrastre de elementos
   const [draggingSymbolId, setDraggingSymbolId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
+  // Arrastre y movimiento de habitaciones completas con su contenido
+  const [draggingRoomId, setDraggingRoomId] = useState<string | null>(null);
+  const [roomDragStart, setRoomDragStart] = useState<{
+    cursorX: number;
+    cursorY: number;
+    roomX: number;
+    roomY: number;
+    internalSymbols: { id: string; initX: number; initY: number }[];
+    boundaryWalls: { id: string; initX1: number; initY1: number; initX2: number; initY2: number }[];
+  } | null>(null);
+
+  // Redimensionamiento de habitaciones desde esquinas
+  const [resizingRoomCorner, setResizingRoomCorner] = useState<'tl' | 'tr' | 'bl' | 'br' | null>(null);
+  const [roomResizeStart, setRoomResizeStart] = useState<{
+    cursorX: number;
+    cursorY: number;
+    roomX: number;
+    roomY: number;
+    roomWidth: number;
+    roomHeight: number;
+  } | null>(null);
+
+  // Modal de confirmación para borrado de habitación con componentes interiores
+  const [roomDeleteModalData, setRoomDeleteModalData] = useState<{
+    roomId: string;
+    roomName: string;
+    symbolCount: number;
+    symbolIds: string[];
+  } | null>(null);
+
+  // Estado de aviso de falla descartado/cerrado por el usuario con (X) o Esc
+  const [isFaultBannerDismissed, setIsFaultBannerDismissed] = useState<boolean>(false);
 
   // Terminal seleccionado para inicio de cable
   const [wiringStart, setWiringStart] = useState<{
@@ -264,12 +298,85 @@ export const CADEditor: React.FC<CADEditorProps> = ({
             : sym
         ),
       }));
+    } else if (draggingRoomId && roomDragStart) {
+      const rawDx = coords.x - roomDragStart.cursorX;
+      const rawDy = coords.y - roomDragStart.cursorY;
+      const dx = snapToGrid ? Math.round(rawDx / gridSize) * gridSize : rawDx;
+      const dy = snapToGrid ? Math.round(rawDy / gridSize) * gridSize : rawDy;
+
+      onUpdateProject((prev) => ({
+        ...prev,
+        rooms: prev.rooms.map((r) =>
+          r.id === draggingRoomId
+            ? { ...r, x: roomDragStart.roomX + dx, y: roomDragStart.roomY + dy }
+            : r
+        ),
+        symbols: prev.symbols.map((s) => {
+          const match = roomDragStart.internalSymbols.find((item) => item.id === s.id);
+          return match ? { ...s, x: match.initX + dx, y: match.initY + dy } : s;
+        }),
+        architecturalElements: prev.architecturalElements.map((a) => {
+          const match = roomDragStart.boundaryWalls.find((item) => item.id === a.id);
+          return match
+            ? { ...a, x1: match.initX1 + dx, y1: match.initY1 + dy, x2: match.initX2 + dx, y2: match.initY2 + dy }
+            : a;
+        }),
+      }));
+    } else if (resizingRoomCorner && roomResizeStart && selectedElementId) {
+      const dx = coords.x - roomResizeStart.cursorX;
+      const dy = coords.y - roomResizeStart.cursorY;
+
+      onUpdateProject((prev) => ({
+        ...prev,
+        rooms: prev.rooms.map((r) => {
+          if (r.id !== selectedElementId) return r;
+          let newX = roomResizeStart.roomX;
+          let newY = roomResizeStart.roomY;
+          let newW = roomResizeStart.roomWidth;
+          let newH = roomResizeStart.roomHeight;
+
+          if (resizingRoomCorner === 'br') {
+            newW = Math.max(80, roomResizeStart.roomWidth + dx);
+            newH = Math.max(80, roomResizeStart.roomHeight + dy);
+          } else if (resizingRoomCorner === 'bl') {
+            const targetW = Math.max(80, roomResizeStart.roomWidth - dx);
+            newX = roomResizeStart.roomX + (roomResizeStart.roomWidth - targetW);
+            newW = targetW;
+            newH = Math.max(80, roomResizeStart.roomHeight + dy);
+          } else if (resizingRoomCorner === 'tr') {
+            newW = Math.max(80, roomResizeStart.roomWidth + dx);
+            const targetH = Math.max(80, roomResizeStart.roomHeight - dy);
+            newY = roomResizeStart.roomY + (roomResizeStart.roomHeight - targetH);
+            newH = targetH;
+          } else if (resizingRoomCorner === 'tl') {
+            const targetW = Math.max(80, roomResizeStart.roomWidth - dx);
+            const targetH = Math.max(80, roomResizeStart.roomHeight - dy);
+            newX = roomResizeStart.roomX + (roomResizeStart.roomWidth - targetW);
+            newY = roomResizeStart.roomY + (roomResizeStart.roomHeight - targetH);
+            newW = targetW;
+            newH = targetH;
+          }
+
+          if (snapToGrid) {
+            newX = Math.round(newX / gridSize) * gridSize;
+            newY = Math.round(newY / gridSize) * gridSize;
+            newW = Math.round(newW / gridSize) * gridSize;
+            newH = Math.round(newH / gridSize) * gridSize;
+          }
+
+          return { ...r, x: newX, y: newY, width: newW, height: newH };
+        }),
+      }));
     }
   };
 
   const handleMouseUp = () => {
     setIsPanning(false);
     setDraggingSymbolId(null);
+    setDraggingRoomId(null);
+    setRoomDragStart(null);
+    setResizingRoomCorner(null);
+    setRoomResizeStart(null);
   };
 
   // Manejo de eventos Touch avanzados (móvil y tablet):
@@ -362,6 +469,30 @@ export const CADEditor: React.FC<CADEditorProps> = ({
               : sym
           ),
         }));
+      } else if (draggingRoomId && roomDragStart) {
+        const rawDx = coords.x - roomDragStart.cursorX;
+        const rawDy = coords.y - roomDragStart.cursorY;
+        const dx = snapToGrid ? Math.round(rawDx / gridSize) * gridSize : rawDx;
+        const dy = snapToGrid ? Math.round(rawDy / gridSize) * gridSize : rawDy;
+
+        onUpdateProject((prev) => ({
+          ...prev,
+          rooms: prev.rooms.map((r) =>
+            r.id === draggingRoomId
+              ? { ...r, x: roomDragStart.roomX + dx, y: roomDragStart.roomY + dy }
+              : r
+          ),
+          symbols: prev.symbols.map((s) => {
+            const match = roomDragStart.internalSymbols.find((item) => item.id === s.id);
+            return match ? { ...s, x: match.initX + dx, y: match.initY + dy } : s;
+          }),
+          architecturalElements: prev.architecturalElements.map((a) => {
+            const match = roomDragStart.boundaryWalls.find((item) => item.id === a.id);
+            return match
+              ? { ...a, x1: match.initX1 + dx, y1: match.initY1 + dy, x2: match.initX2 + dx, y2: match.initY2 + dy }
+              : a;
+          }),
+        }));
       }
     }
   };
@@ -388,6 +519,10 @@ export const CADEditor: React.FC<CADEditorProps> = ({
       setIsTwoFingerGesture(false);
       setIsPanning(false);
       setDraggingSymbolId(null);
+      setDraggingRoomId(null);
+      setRoomDragStart(null);
+      setResizingRoomCorner(null);
+      setRoomResizeStart(null);
     }
   };
 
@@ -465,6 +600,21 @@ export const CADEditor: React.FC<CADEditorProps> = ({
       }));
       onSelectElement(null, null);
     } else if (selectedElementType === 'room') {
+      const room = project.rooms.find((r) => r.id === selectedElementId);
+      if (room) {
+        const internalSymbols = project.symbols.filter(
+          (s) => s.x >= room.x && s.x <= room.x + room.width && s.y >= room.y && s.y <= room.y + room.height
+        );
+        if (internalSymbols.length > 0) {
+          setRoomDeleteModalData({
+            roomId: room.id,
+            roomName: room.name,
+            symbolCount: internalSymbols.length,
+            symbolIds: internalSymbols.map((s) => s.id),
+          });
+          return;
+        }
+      }
       onUpdateProject((prev) => ({
         ...prev,
         rooms: prev.rooms.filter((r) => r.id !== selectedElementId),
@@ -491,10 +641,16 @@ export const CADEditor: React.FC<CADEditorProps> = ({
     }
   };
 
-  // Tecla Supr para borrar
+  // Tecla Supr para borrar y tecla Escape para deseleccionar y cerrar avisos
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Delete' || e.key === 'Backspace') {
+      if (e.key === 'Escape') {
+        setIsFaultBannerDismissed(true);
+        setIsConductorModalOpen(false);
+        setWiringStart(null);
+        setRoomDeleteModalData(null);
+        onSelectElement(null, null);
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
         const activeTag = document.activeElement?.tagName.toLowerCase();
         if (activeTag !== 'input' && activeTag !== 'textarea') {
           handleDeleteSelected();
@@ -703,7 +859,7 @@ export const CADEditor: React.FC<CADEditorProps> = ({
       </div>
 
       {/* Floating Card: Localizador de Fallas y Cortocircuitos (cuando se detectan fallas activas) */}
-      {!is3DView && simState?.activeFaults && simState.activeFaults.length > 0 && (
+      {!is3DView && simState?.activeFaults && simState.activeFaults.length > 0 && !isFaultBannerDismissed && (
         <div className="absolute top-12 left-2 sm:left-3 z-30 max-w-sm sm:max-w-md w-[calc(100%-1rem)] sm:w-auto bg-slate-950/95 border-2 border-red-500 rounded-2xl shadow-2xl p-3 backdrop-blur-md space-y-2 text-xs animate-fade-in">
           <div className="flex items-center justify-between border-b border-red-900/60 pb-1.5">
             <div className="flex items-center gap-2">
@@ -715,12 +871,21 @@ export const CADEditor: React.FC<CADEditorProps> = ({
                 ¡LOCALIZADOR DE FALLAS ({simState.activeFaults.length})!
               </h4>
             </div>
-            <button
-              onClick={() => setIsFaultPanelOpen(!isFaultPanelOpen)}
-              className="text-[11px] text-red-400 hover:text-red-200 font-semibold px-2 py-0.5 bg-red-950/60 rounded border border-red-800"
-            >
-              {isFaultPanelOpen ? 'Ocultar' : 'Ver detalle'}
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setIsFaultPanelOpen(!isFaultPanelOpen)}
+                className="text-[11px] text-red-400 hover:text-red-200 font-semibold px-2 py-0.5 bg-red-950/60 rounded border border-red-800"
+              >
+                {isFaultPanelOpen ? 'Ocultar' : 'Ver detalle'}
+              </button>
+              <button
+                onClick={() => setIsFaultBannerDismissed(true)}
+                className="p-1 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-md transition-colors"
+                title="Cerrar aviso de falla (Esc)"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
           {/* Primera falla con botón de Centrado Automático */}
@@ -774,6 +939,18 @@ export const CADEditor: React.FC<CADEditorProps> = ({
             </div>
           )}
         </div>
+      )}
+
+      {/* Botón flotante accesible para volver a abrir el aviso de fallas si fue cerrado */}
+      {!is3DView && simState?.activeFaults && simState.activeFaults.length > 0 && isFaultBannerDismissed && (
+        <button
+          onClick={() => setIsFaultBannerDismissed(false)}
+          className="absolute top-12 left-2 sm:left-3 z-30 flex items-center gap-1.5 px-3 py-1.5 bg-red-950/90 hover:bg-red-900 border border-red-600 text-red-200 rounded-xl shadow-xl backdrop-blur-md text-xs font-bold transition-all animate-pulse"
+          title="Ver detalle del cortocircuito o falla detectada"
+        >
+          <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+          <span>{simState.activeFaults.length} Falla(s) Detectada(s) (Ver)</span>
+        </button>
       )}
 
       {/* Si está activo el Visor 3D, mostramos el canvas Three.js interactivo */}
@@ -1053,7 +1230,6 @@ export const CADEditor: React.FC<CADEditorProps> = ({
                   e.stopPropagation();
                   onSelectElement('room', room.id);
                 }}
-                className="cursor-pointer"
               >
                 <rect
                   x={room.x}
@@ -1062,9 +1238,180 @@ export const CADEditor: React.FC<CADEditorProps> = ({
                   height={room.height}
                   fill={room.color || 'rgba(59, 130, 246, 0.05)'}
                   stroke={isSelected ? '#f59e0b' : '#334155'}
-                  strokeWidth={isSelected ? 2 : 1}
-                  strokeDasharray={isSelected ? '4,4' : undefined}
+                  strokeWidth={isSelected ? 2.5 : 1}
+                  strokeDasharray={isSelected ? '6,3' : undefined}
+                  onMouseDown={(e) => {
+                    if (activeTool === 'select' && !isPanMode) {
+                      e.stopPropagation();
+                      onSelectElement('room', room.id);
+                      const coords = getSVGCoordinates(e.clientX, e.clientY);
+                      const internalSymbols = project.symbols
+                        .filter((s) => s.x >= room.x && s.x <= room.x + room.width && s.y >= room.y && s.y <= room.y + room.height)
+                        .map((s) => ({ id: s.id, initX: s.x, initY: s.y }));
+                      const margin = 20;
+                      const boundaryWalls = project.architecturalElements
+                        .filter((a) => {
+                          const midX = (a.x1 + a.x2) / 2;
+                          const midY = (a.y1 + a.y2) / 2;
+                          return (
+                            midX >= room.x - margin &&
+                            midX <= room.x + room.width + margin &&
+                            midY >= room.y - margin &&
+                            midY <= room.y + room.height + margin
+                          );
+                        })
+                        .map((a) => ({ id: a.id, initX1: a.x1, initY1: a.y1, initX2: a.x2, initY2: a.y2 }));
+
+                      setDraggingRoomId(room.id);
+                      setRoomDragStart({
+                        cursorX: coords.x,
+                        cursorY: coords.y,
+                        roomX: room.x,
+                        roomY: room.y,
+                        internalSymbols,
+                        boundaryWalls,
+                      });
+                    }
+                  }}
+                  onTouchStart={(e) => {
+                    if (activeTool === 'select' && !isPanMode && e.touches.length === 1) {
+                      e.stopPropagation();
+                      onSelectElement('room', room.id);
+                      const touch = e.touches[0];
+                      const coords = getSVGCoordinates(touch.clientX, touch.clientY);
+                      const internalSymbols = project.symbols
+                        .filter((s) => s.x >= room.x && s.x <= room.x + room.width && s.y >= room.y && s.y <= room.y + room.height)
+                        .map((s) => ({ id: s.id, initX: s.x, initY: s.y }));
+                      const margin = 20;
+                      const boundaryWalls = project.architecturalElements
+                        .filter((a) => {
+                          const midX = (a.x1 + a.x2) / 2;
+                          const midY = (a.y1 + a.y2) / 2;
+                          return (
+                            midX >= room.x - margin &&
+                            midX <= room.x + room.width + margin &&
+                            midY >= room.y - margin &&
+                            midY <= room.y + room.height + margin
+                          );
+                        })
+                        .map((a) => ({ id: a.id, initX1: a.x1, initY1: a.y1, initX2: a.x2, initY2: a.y2 }));
+
+                      setDraggingRoomId(room.id);
+                      setRoomDragStart({
+                        cursorX: coords.x,
+                        cursorY: coords.y,
+                        roomX: room.x,
+                        roomY: room.y,
+                        internalSymbols,
+                        boundaryWalls,
+                      });
+                    }
+                  }}
+                  className={activeTool === 'select' && !isPanMode ? 'cursor-move' : 'cursor-pointer'}
                 />
+
+                {/* 4 Manijas de redimensionamiento en las esquinas cuando la habitación está seleccionada */}
+                {isSelected && (
+                  <g className="cursor-pointer">
+                    {/* Superior Izquierda (TL) */}
+                    <rect
+                      x={room.x - 5}
+                      y={room.y - 5}
+                      width={10}
+                      height={10}
+                      fill="#f59e0b"
+                      stroke="#ffffff"
+                      strokeWidth={1.5}
+                      className="cursor-nwse-resize"
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        const coords = getSVGCoordinates(e.clientX, e.clientY);
+                        setResizingRoomCorner('tl');
+                        setRoomResizeStart({
+                          cursorX: coords.x,
+                          cursorY: coords.y,
+                          roomX: room.x,
+                          roomY: room.y,
+                          roomWidth: room.width,
+                          roomHeight: room.height,
+                        });
+                      }}
+                    />
+                    {/* Superior Derecha (TR) */}
+                    <rect
+                      x={room.x + room.width - 5}
+                      y={room.y - 5}
+                      width={10}
+                      height={10}
+                      fill="#f59e0b"
+                      stroke="#ffffff"
+                      strokeWidth={1.5}
+                      className="cursor-nesw-resize"
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        const coords = getSVGCoordinates(e.clientX, e.clientY);
+                        setResizingRoomCorner('tr');
+                        setRoomResizeStart({
+                          cursorX: coords.x,
+                          cursorY: coords.y,
+                          roomX: room.x,
+                          roomY: room.y,
+                          roomWidth: room.width,
+                          roomHeight: room.height,
+                        });
+                      }}
+                    />
+                    {/* Inferior Izquierda (BL) */}
+                    <rect
+                      x={room.x - 5}
+                      y={room.y + room.height - 5}
+                      width={10}
+                      height={10}
+                      fill="#f59e0b"
+                      stroke="#ffffff"
+                      strokeWidth={1.5}
+                      className="cursor-nesw-resize"
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        const coords = getSVGCoordinates(e.clientX, e.clientY);
+                        setResizingRoomCorner('bl');
+                        setRoomResizeStart({
+                          cursorX: coords.x,
+                          cursorY: coords.y,
+                          roomX: room.x,
+                          roomY: room.y,
+                          roomWidth: room.width,
+                          roomHeight: room.height,
+                        });
+                      }}
+                    />
+                    {/* Inferior Derecha (BR) */}
+                    <rect
+                      x={room.x + room.width - 5}
+                      y={room.y + room.height - 5}
+                      width={10}
+                      height={10}
+                      fill="#f59e0b"
+                      stroke="#ffffff"
+                      strokeWidth={1.5}
+                      className="cursor-nwse-resize"
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        const coords = getSVGCoordinates(e.clientX, e.clientY);
+                        setResizingRoomCorner('br');
+                        setRoomResizeStart({
+                          cursorX: coords.x,
+                          cursorY: coords.y,
+                          roomX: room.x,
+                          roomY: room.y,
+                          roomWidth: room.width,
+                          roomHeight: room.height,
+                        });
+                      }}
+                    />
+                  </g>
+                )}
+
                 {/* Nombre del ambiente y dimensiones */}
                 <text
                   x={room.x + room.width / 2}
@@ -1074,6 +1421,7 @@ export const CADEditor: React.FC<CADEditorProps> = ({
                   fontSize="12"
                   fontWeight="600"
                   fontFamily="'Plus Jakarta Sans', sans-serif"
+                  style={{ pointerEvents: 'none' }}
                 >
                   {room.name}
                 </text>
@@ -1085,6 +1433,7 @@ export const CADEditor: React.FC<CADEditorProps> = ({
                     fill="#64748b"
                     fontSize="10"
                     fontFamily="'JetBrains Mono', monospace"
+                    style={{ pointerEvents: 'none' }}
                   >
                     {areaM2} m² ({(room.width / 40).toFixed(1)}m × {(room.height / 40).toFixed(1)}m)
                   </text>
@@ -1538,6 +1887,69 @@ export const CADEditor: React.FC<CADEditorProps> = ({
       }));
     }}
   />
+
+  {/* Modal de Confirmación de Borrado de Habitación con Componentes */}
+  {roomDeleteModalData && (
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in"
+    >
+      <div className="bg-slate-900 border border-slate-700 max-w-md w-full rounded-2xl shadow-2xl p-4 sm:p-5 space-y-3.5 text-slate-100">
+        <div className="flex items-center gap-2.5 text-amber-400">
+          <AlertTriangle className="w-5 h-5 shrink-0" />
+          <h3 className="font-bold text-sm sm:text-base text-white">
+            Eliminar Ambiente "{roomDeleteModalData.roomName}"
+          </h3>
+        </div>
+        <p className="text-xs text-slate-300 leading-relaxed">
+          Este ambiente contiene <strong className="text-amber-400 font-bold">{roomDeleteModalData.symbolCount} componentes eléctricos</strong> en su interior. ¿Qué deseas hacer?
+        </p>
+        <div className="space-y-2 pt-1">
+          <button
+            onClick={() => {
+              const toDeleteIds = new Set(roomDeleteModalData.symbolIds);
+              onUpdateProject((prev) => ({
+                ...prev,
+                rooms: prev.rooms.filter((r) => r.id !== roomDeleteModalData.roomId),
+                symbols: prev.symbols.filter((s) => !toDeleteIds.has(s.id)),
+                wires: prev.wires.filter(
+                  (w) => !toDeleteIds.has(w.fromComponentId) && !toDeleteIds.has(w.toComponentId)
+                ),
+              }));
+              setRoomDeleteModalData(null);
+              onSelectElement(null, null);
+            }}
+            className="w-full py-2 px-3 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-2"
+          >
+            <Trash2 className="w-4 h-4" />
+            <span>Eliminar Ambiente y su contenido ({roomDeleteModalData.symbolCount} bocas y cables)</span>
+          </button>
+
+          <button
+            onClick={() => {
+              onUpdateProject((prev) => ({
+                ...prev,
+                rooms: prev.rooms.filter((r) => r.id !== roomDeleteModalData.roomId),
+              }));
+              setRoomDeleteModalData(null);
+              onSelectElement(null, null);
+            }}
+            className="w-full py-2 px-3 bg-slate-800 hover:bg-slate-750 text-slate-200 font-semibold text-xs rounded-xl border border-slate-700 transition-colors"
+          >
+            Eliminar solo el Ambiente (conservar bocas en el plano)
+          </button>
+
+          <button
+            onClick={() => setRoomDeleteModalData(null)}
+            className="w-full py-2 px-3 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white font-semibold text-xs rounded-xl transition-colors"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
 </div>
   );
 };

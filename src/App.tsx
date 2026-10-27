@@ -22,14 +22,27 @@ import { BeginnerRecognitionLab } from './components/BeginnerRecognitionLab';
 import { ReportView } from './components/ReportView';
 import { ClientRequestView } from './components/ClientRequestView';
 import { HelpModal } from './components/HelpModal';
+import { ProjectManagerModal } from './components/ProjectManagerModal';
+import { AcometidaPilarModal } from './components/AcometidaPilarModal';
+import {
+  saveProjectToStorage,
+  loadProjectFromStorage,
+  getActiveProjectId,
+  DEMO_PROJECT_ID,
+} from './services/projectStorage';
 import { Compass, Sliders, X, GitCommit } from 'lucide-react';
 
 const STORAGE_KEY = 'electra_plan_project_v1';
 
 export default function App() {
-  // Cargar proyecto desde localStorage si existe, o utilizar el proyecto demo preconfigurado
+  // Cargar proyecto desde localStorage con soporte multi-proyecto o demo
   const [project, setProject] = useState<Project>(() => {
     try {
+      const activeId = getActiveProjectId();
+      const loaded = loadProjectFromStorage(activeId);
+      if (loaded && loaded.version && loaded.symbols) {
+        return loaded;
+      }
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
@@ -63,6 +76,8 @@ export default function App() {
   // Estado de guardado y modales
   const [saveStatus, setSaveStatus] = useState<string>('Guardado');
   const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false);
+  const [isProjectManagerOpen, setIsProjectManagerOpen] = useState<boolean>(false);
+  const [isAcometidaModalOpen, setIsAcometidaModalOpen] = useState<boolean>(false);
   const [isMobileToolbarOpen, setIsMobileToolbarOpen] = useState<boolean>(false);
   const [isMobilePropertiesOpen, setIsMobilePropertiesOpen] = useState<boolean>(false);
 
@@ -89,9 +104,10 @@ export default function App() {
     [historyIndex]
   );
 
-  // Auto-guardado en LocalStorage
+  // Auto-guardado en LocalStorage con índice multi-proyecto
   useEffect(() => {
     try {
+      saveProjectToStorage(project);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(project));
       setSaveStatus('Guardado en navegador');
     } catch (err) {
@@ -117,113 +133,27 @@ export default function App() {
     }
   }, [history, historyIndex]);
 
-  // Nuevo Proyecto
+  // Nuevo Proyecto (Abre el Gestor de Proyectos en la pestaña para crear vivienda en blanco)
   const handleNewProject = () => {
-    if (confirm('¿Deseas iniciar un nuevo proyecto en blanco? Los cambios actuales están guardados.')) {
-      const blankProject: Project = {
-        version: '1.2.0',
-        metadata: {
-          id: `proj_${Date.now()}`,
-          name: 'Nuevo Proyecto Eléctrico',
-          client: '',
-          address: '',
-          description: '',
-          author: '',
-          date: new Date().toISOString().slice(0, 10),
-          country: 'Argentina',
-          normative: 'AEA 90364-771',
-          gridSize: 20,
-          snapToGrid: true,
-          showDimensions: true,
-          scale: 40,
-        },
-        floors: [{ id: 'floor_1', name: 'Planta 1', level: 0, scalePixelsPerMeter: 40 }],
-        activeFloorId: 'floor_1',
-        rooms: [],
-        architecturalElements: [],
-        symbols: [],
-        wires: [],
-        circuits: [
-          {
-            id: 'C1',
-            name: 'Iluminación de Uso General (IUG)',
-            type: 'IUG',
-            voltage: 220,
-            phases: 1,
-            powerFactor: 0.95,
-            conductorMaterial: 'Cu',
-            crossSectionMm2: 1.5,
-            breakerAmps: 10,
-            breakerCurve: 'C',
-            breakerPoles: '2P',
-            color: '#3b82f6',
-            installationMethod: 'cañeria_embutida',
-            lengthMetersEstimate: 12,
-          },
-          {
-            id: 'C2',
-            name: 'Tomacorrientes de Uso General (TUG)',
-            type: 'TUG',
-            voltage: 220,
-            phases: 1,
-            powerFactor: 0.9,
-            conductorMaterial: 'Cu',
-            crossSectionMm2: 2.5,
-            breakerAmps: 16,
-            breakerCurve: 'C',
-            breakerPoles: '2P',
-            color: '#10b981',
-            installationMethod: 'cañeria_embutida',
-            lengthMetersEstimate: 16,
-          },
-        ],
-        switchboard: {
-          id: 'board_main',
-          name: 'Tablero Seccional',
-          location: 'Acceso',
-          mainBreakerAmps: 32,
-          differentialAmps: 40,
-          components: [
-            {
-              id: 'comp_iga',
-              type: 'iga',
-              name: 'Interruptor General (IGA 32A)',
-              ratingAmps: 32,
-              poles: '2P',
-              state: 'closed',
-            },
-            {
-              id: 'comp_id',
-              type: 'diferencial',
-              name: 'Disyuntor Diferencial (ID 40A / 30mA)',
-              ratingAmps: 40,
-              poles: '2P',
-              sensitivityMa: 30,
-              state: 'closed',
-            },
-          ],
-        },
-        currency: 'ARS',
-      };
-      setProject(blankProject);
-      setSelectedElementId(null);
-      setSelectedElementType(null);
-    }
+    setIsProjectManagerOpen(true);
   };
 
   // Cargar Proyecto Demo
   const handleOpenDemo = () => {
-    if (confirm('¿Deseas cargar el proyecto de demostración (Vivienda 2 ambientes con IUG y TUG)?')) {
-      const demo = createDemoProject();
-      setProject(demo);
-      setSelectedElementId(null);
-      setSelectedElementType(null);
-    }
+    const demo = loadProjectFromStorage(DEMO_PROJECT_ID) || createDemoProject();
+    demo.metadata.id = DEMO_PROJECT_ID;
+    setProject(demo);
+    setHistory([]);
+    setHistoryIndex(-1);
+    setSelectedElementId(null);
+    setSelectedElementType(null);
+    setSaveStatus('Plantilla cargada');
   };
 
   // Guardar Manualmente
   const handleSave = () => {
     try {
+      saveProjectToStorage(project);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(project));
       setSaveStatus('¡Guardado exitosamente!');
       setTimeout(() => setSaveStatus('Guardado en navegador'), 3000);
@@ -324,19 +254,30 @@ export default function App() {
 
   // Agregar habitación predefinida desde la barra de herramientas
   const handleAddPresetRoom = (roomName: string, w: number, h: number) => {
+    const rx = 80 + (project.rooms.length % 3) * 300;
+    const ry = 80 + Math.floor(project.rooms.length / 3) * 260;
+    const roomId = `room_${Date.now()}`;
     const newRoom = {
-      id: `room_${Date.now()}`,
+      id: roomId,
       floorId: project.activeFloorId,
       name: roomName,
-      x: 100 + project.rooms.length * 20,
-      y: 100 + project.rooms.length * 20,
+      x: rx,
+      y: ry,
       width: w,
       height: h,
       color: 'rgba(59, 130, 246, 0.05)',
     };
+    // Muros perimetrales arquitectónicos para la habitación
+    const newWalls = [
+      { id: `wall_${roomId}_t`, floorId: project.activeFloorId, type: 'wall' as const, x1: rx, y1: ry, x2: rx + w, y2: ry, thickness: 10 },
+      { id: `wall_${roomId}_r`, floorId: project.activeFloorId, type: 'wall' as const, x1: rx + w, y1: ry, x2: rx + w, y2: ry + h, thickness: 10 },
+      { id: `wall_${roomId}_b`, floorId: project.activeFloorId, type: 'wall' as const, x1: rx + w, y1: ry + h, x2: rx, y2: ry + h, thickness: 10 },
+      { id: `wall_${roomId}_l`, floorId: project.activeFloorId, type: 'wall' as const, x1: rx, y1: ry + h, x2: rx, y2: ry, thickness: 10 },
+    ];
     updateProject((prev) => ({
       ...prev,
       rooms: [...prev.rooms, newRoom],
+      architecturalElements: [...prev.architecturalElements, ...newWalls],
     }));
     setSelectedElementType('room');
     setSelectedElementId(newRoom.id);
@@ -348,6 +289,8 @@ export default function App() {
       <Header
         project={project}
         onNewProject={handleNewProject}
+        onOpenProjectManager={() => setIsProjectManagerOpen(true)}
+        onOpenAcometidaModal={() => setIsAcometidaModalOpen(true)}
         onOpenDemo={handleOpenDemo}
         onSave={handleSave}
         onUndo={handleUndo}
@@ -650,6 +593,30 @@ export default function App() {
 
         {activeTab === 'informe' && <ReportView project={project} />}
       </main>
+
+      {/* Modal de Gestor de Proyectos y Creación desde Cero */}
+      <ProjectManagerModal
+        isOpen={isProjectManagerOpen}
+        onClose={() => setIsProjectManagerOpen(false)}
+        currentProject={project}
+        onSelectProject={(newProj) => {
+          setProject(newProj);
+          setHistory([]);
+          setHistoryIndex(-1);
+          setSelectedElementId(null);
+          setSelectedElementType(null);
+          setSaveStatus('Proyecto cargado');
+        }}
+        hasUnsavedChanges={saveStatus === 'Modificado'}
+        onSaveCurrent={handleSave}
+      />
+
+      {/* Modal de Acometida, Pilar de Medición y Puesta a Tierra */}
+      <AcometidaPilarModal
+        isOpen={isAcometidaModalOpen}
+        onClose={() => setIsAcometidaModalOpen(false)}
+        project={project}
+      />
 
       {/* Modal de Ayuda */}
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />

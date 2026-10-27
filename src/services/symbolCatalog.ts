@@ -257,6 +257,128 @@ export const SYMBOL_TEMPLATES: SymbolTemplate[] = [
     ],
   },
 
+  // --- ELECTRODOMÉSTICOS Y ARTEFACTOS REALISTAS (CONSUMO Y POTENCIA) ---
+  {
+    type: 'termotanque',
+    category: 'utilizacion',
+    name: 'Termotanque Eléctrico (80L / 1500W)',
+    labelPrefix: 'TT',
+    defaultPowerWatts: 1500,
+    defaultCircuitType: 'TUE',
+    description: 'Termotanque de acumulación con resistencia blindada de 1.5 kW. Requiere circuito exclusivo TUE con toma de 20A.',
+    normativeRef: 'IRAM 2071 / AEA 771.8.3',
+    terminals: [
+      { id: 'L', name: 'Fase (L)', type: 'fase', relX: -16, relY: -10 },
+      { id: 'N', name: 'Neutro (N)', type: 'neutro', relX: 16, relY: -10 },
+      { id: 'PE', name: 'Tierra (PE)', type: 'tierra', relX: 0, relY: 16 },
+    ],
+  },
+  {
+    type: 'aire_acondicionado',
+    category: 'utilizacion',
+    name: 'Aire Acondicionado Split (3000 Fg / 2200W)',
+    labelPrefix: 'AA',
+    defaultPowerWatts: 2200,
+    defaultCircuitType: 'TUE',
+    description: 'Equipo de climatización frío/calor. Circuito individual TUE con térmica bipolar independiente y toma de 20A.',
+    normativeRef: 'AEA 771.8.3 / IRAM 2071',
+    terminals: [
+      { id: 'L', name: 'Fase (L)', type: 'fase', relX: -16, relY: -10 },
+      { id: 'N', name: 'Neutro (N)', type: 'neutro', relX: 16, relY: -10 },
+      { id: 'PE', name: 'Tierra (PE)', type: 'tierra', relX: 0, relY: 16 },
+    ],
+  },
+  {
+    type: 'horno_electrico',
+    category: 'utilizacion',
+    name: 'Horno Eléctrico de Empotrar (2000W)',
+    labelPrefix: 'HE',
+    defaultPowerWatts: 2000,
+    defaultCircuitType: 'TUE',
+    description: 'Horno eléctrico con doble resistencia y convección. Circuito para cargas elevadas en cocina.',
+    normativeRef: 'AEA 90364-771',
+    terminals: [
+      { id: 'L', name: 'Fase (L)', type: 'fase', relX: -16, relY: -10 },
+      { id: 'N', name: 'Neutro (N)', type: 'neutro', relX: 16, relY: -10 },
+      { id: 'PE', name: 'Tierra (PE)', type: 'tierra', relX: 0, relY: 16 },
+    ],
+  },
+  {
+    type: 'heladera',
+    category: 'utilizacion',
+    name: 'Heladera con Freezer No Frost (250W)',
+    labelPrefix: 'HEL',
+    defaultPowerWatts: 250,
+    defaultCircuitType: 'TUG',
+    description: 'Refrigerador doméstico motor inverter/compresor de bajo consumo y alta confiabilidad.',
+    normativeRef: 'IRAM 2071',
+    terminals: [
+      { id: 'L', name: 'Fase (L)', type: 'fase', relX: -14, relY: -8 },
+      { id: 'N', name: 'Neutro (N)', type: 'neutro', relX: 14, relY: -8 },
+      { id: 'PE', name: 'Tierra (PE)', type: 'tierra', relX: 0, relY: 15 },
+    ],
+  },
+  {
+    type: 'lavarropas',
+    category: 'utilizacion',
+    name: 'Lavarropas Automático (1200W)',
+    labelPrefix: 'LAV',
+    defaultPowerWatts: 1200,
+    defaultCircuitType: 'TUG',
+    description: 'Lavarropas con centrifugado y calentamiento de agua. Ubicado habitualmente en lavadero o baño.',
+    normativeRef: 'IRAM 2071 / AEA 771.8',
+    terminals: [
+      { id: 'L', name: 'Fase (L)', type: 'fase', relX: -14, relY: -8 },
+      { id: 'N', name: 'Neutro (N)', type: 'neutro', relX: 14, relY: -8 },
+      { id: 'PE', name: 'Tierra (PE)', type: 'tierra', relX: 0, relY: 15 },
+    ],
+  },
+  {
+    type: 'microondas',
+    category: 'utilizacion',
+    name: 'Horno Microondas (1200W)',
+    labelPrefix: 'MO',
+    defaultPowerWatts: 1200,
+    defaultCircuitType: 'TUG',
+    description: 'Artefacto de cocción rápida por magnetrón de 1.2 kW con conexión de puesta a tierra reglamentaria.',
+    normativeRef: 'IRAM 2071',
+    terminals: [
+      { id: 'L', name: 'Fase (L)', type: 'fase', relX: -14, relY: -8 },
+      { id: 'N', name: 'Neutro (N)', type: 'neutro', relX: 14, relY: -8 },
+      { id: 'PE', name: 'Tierra (PE)', type: 'tierra', relX: 0, relY: 15 },
+    ],
+  },
+  {
+    type: 'pava_electrica',
+    category: 'utilizacion',
+    name: 'Pava Eléctrica / Jarra Térmica (1800W)',
+    labelPrefix: 'PAV',
+    defaultPowerWatts: 1800,
+    defaultCircuitType: 'TUG',
+    description: 'Artefacto resistivo de calentamiento de agua instantáneo con alta demanda puntual.',
+    normativeRef: 'IRAM 2071',
+    terminals: [
+      { id: 'L', name: 'Fase (L)', type: 'fase', relX: -14, relY: -8 },
+      { id: 'N', name: 'Neutro (N)', type: 'neutro', relX: 14, relY: -8 },
+      { id: 'PE', name: 'Tierra (PE)', type: 'tierra', relX: 0, relY: 15 },
+    ],
+  },
+  {
+    type: 'bomba_agua',
+    category: 'utilizacion',
+    name: 'Bomba de Agua Centrífuga (1 HP / 750W)',
+    labelPrefix: 'BOM',
+    defaultPowerWatts: 750,
+    defaultCircuitType: 'TUE',
+    description: 'Electrobomba monofásica para elevación a tanque de reserva o presurización.',
+    normativeRef: 'AEA 90364-771',
+    terminals: [
+      { id: 'L', name: 'Fase (L)', type: 'fase', relX: -16, relY: -8 },
+      { id: 'N', name: 'Neutro (N)', type: 'neutro', relX: 16, relY: -8 },
+      { id: 'PE', name: 'Tierra (PE)', type: 'tierra', relX: 0, relY: 15 },
+    ],
+  },
+
   // --- CANALIZACIONES Y EMPALMES ---
   {
     type: 'caja_paso',
@@ -517,6 +639,38 @@ export function getComponentLabelInfo(symbol: ElectricalSymbol, circuits?: { id:
     case 'ventilador':
       common = 'VENTILADOR';
       defaultPrefix = 'VENT';
+      break;
+    case 'termotanque':
+      common = 'TERMOTANQUE';
+      defaultPrefix = 'TT';
+      break;
+    case 'aire_acondicionado':
+      common = 'AIRE ACOND.';
+      defaultPrefix = 'AA';
+      break;
+    case 'horno_electrico':
+      common = 'HORNO';
+      defaultPrefix = 'HE';
+      break;
+    case 'heladera':
+      common = 'HELADERA';
+      defaultPrefix = 'HEL';
+      break;
+    case 'lavarropas':
+      common = 'LAVARROPAS';
+      defaultPrefix = 'LAV';
+      break;
+    case 'microondas':
+      common = 'MICROONDAS';
+      defaultPrefix = 'MO';
+      break;
+    case 'pava_electrica':
+      common = 'PAVA ELÉC.';
+      defaultPrefix = 'PAV';
+      break;
+    case 'bomba_agua':
+      common = 'BOMBA';
+      defaultPrefix = 'BOM';
       break;
   }
 

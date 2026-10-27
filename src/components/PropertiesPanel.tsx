@@ -365,9 +365,10 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   <input
                     type="number"
                     step="0.1"
+                    min="1"
                     value={Number((selectedRoom.width / 40).toFixed(1))}
                     onChange={(e) => {
-                      const val = Number(e.target.value) * 40;
+                      const val = Math.max(40, Number(e.target.value) * 40);
                       onUpdateProject((prev) => ({
                         ...prev,
                         rooms: prev.rooms.map((r) =>
@@ -384,9 +385,10 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   <input
                     type="number"
                     step="0.1"
+                    min="1"
                     value={Number((selectedRoom.height / 40).toFixed(1))}
                     onChange={(e) => {
-                      const val = Number(e.target.value) * 40;
+                      const val = Math.max(40, Number(e.target.value) * 40);
                       onUpdateProject((prev) => ({
                         ...prev,
                         rooms: prev.rooms.map((r) =>
@@ -399,12 +401,113 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                 </div>
               </div>
 
-              <div className="p-2 bg-slate-900 rounded border border-slate-800 text-center">
-                <span className="text-[10px] text-slate-400 block">Superficie Total Estimada</span>
-                <span className="text-base font-bold text-amber-400 font-mono">
-                  {((selectedRoom.width / 40) * (selectedRoom.height / 40)).toFixed(2)} m²
-                </span>
+              {/* Posición en el plano */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] text-slate-400 block mb-0.5">Posición X (m)</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={Number((selectedRoom.x / 40).toFixed(1))}
+                    onChange={(e) => {
+                      const newX = Number(e.target.value) * 40;
+                      const dx = newX - selectedRoom.x;
+                      onUpdateProject((prev) => ({
+                        ...prev,
+                        rooms: prev.rooms.map((r) =>
+                          r.id === selectedRoom.id ? { ...r, x: newX } : r
+                        ),
+                        symbols: prev.symbols.map((s) => {
+                          const isInside =
+                            s.x >= selectedRoom.x &&
+                            s.x <= selectedRoom.x + selectedRoom.width &&
+                            s.y >= selectedRoom.y &&
+                            s.y <= selectedRoom.y + selectedRoom.height;
+                          return isInside ? { ...s, x: s.x + dx } : s;
+                        }),
+                      }));
+                    }}
+                    className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-100 font-mono text-xs focus:border-amber-500 focus:outline-hidden"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-slate-400 block mb-0.5">Posición Y (m)</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={Number((selectedRoom.y / 40).toFixed(1))}
+                    onChange={(e) => {
+                      const newY = Number(e.target.value) * 40;
+                      const dy = newY - selectedRoom.y;
+                      onUpdateProject((prev) => ({
+                        ...prev,
+                        rooms: prev.rooms.map((r) =>
+                          r.id === selectedRoom.id ? { ...r, y: newY } : r
+                        ),
+                        symbols: prev.symbols.map((s) => {
+                          const isInside =
+                            s.x >= selectedRoom.x &&
+                            s.x <= selectedRoom.x + selectedRoom.width &&
+                            s.y >= selectedRoom.y &&
+                            s.y <= selectedRoom.y + selectedRoom.height;
+                          return isInside ? { ...s, y: s.y + dy } : s;
+                        }),
+                      }));
+                    }}
+                    className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-100 font-mono text-xs focus:border-amber-500 focus:outline-hidden"
+                  />
+                </div>
               </div>
+
+              {/* Superficie y Componentes Contenidos */}
+              <div className="p-2.5 bg-slate-900 rounded border border-slate-800 space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400">Superficie Total:</span>
+                  <span className="font-bold text-amber-400 font-mono">
+                    {((selectedRoom.width / 40) * (selectedRoom.height / 40)).toFixed(2)} m²
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400">Bocas en este ambiente:</span>
+                  <span className="font-bold text-emerald-400 font-mono">
+                    {
+                      project.symbols.filter(
+                        (s) =>
+                          s.x >= selectedRoom.x &&
+                          s.x <= selectedRoom.x + selectedRoom.width &&
+                          s.y >= selectedRoom.y &&
+                          s.y <= selectedRoom.y + selectedRoom.height
+                      ).length
+                    }
+                  </span>
+                </div>
+              </div>
+
+              {/* Botón para generar muros perimetrales automáticos */}
+              <button
+                onClick={() => {
+                  const r = selectedRoom;
+                  const newWalls: ArchElement[] = [
+                    // Muro Superior
+                    { id: `wall_${r.id}_top_${Date.now()}`, floorId: r.floorId, type: 'wall', x1: r.x, y1: r.y, x2: r.x + r.width, y2: r.y, thickness: 10 },
+                    // Muro Derecho
+                    { id: `wall_${r.id}_right_${Date.now()}`, floorId: r.floorId, type: 'wall', x1: r.x + r.width, y1: r.y, x2: r.x + r.width, y2: r.y + r.height, thickness: 10 },
+                    // Muro Inferior
+                    { id: `wall_${r.id}_bottom_${Date.now()}`, floorId: r.floorId, type: 'wall', x1: r.x + r.width, y1: r.y + r.height, x2: r.x, y2: r.y + r.height, thickness: 10 },
+                    // Muro Izquierdo
+                    { id: `wall_${r.id}_left_${Date.now()}`, floorId: r.floorId, type: 'wall', x1: r.x, y1: r.y + r.height, x2: r.x, y2: r.y, thickness: 10 },
+                  ];
+                  onUpdateProject((prev) => ({
+                    ...prev,
+                    architecturalElements: [...prev.architecturalElements, ...newWalls],
+                  }));
+                  alert('¡Muros perimetrales generados alrededor del ambiente!');
+                }}
+                className="w-full py-1.5 px-2 bg-slate-800 hover:bg-slate-750 text-amber-300 font-semibold text-[11px] rounded border border-slate-700 transition-colors flex items-center justify-center gap-1.5"
+              >
+                <span>Generar Muros Perimetrales</span>
+              </button>
             </div>
           </div>
         )}
