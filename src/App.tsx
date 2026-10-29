@@ -21,6 +21,10 @@ import { PracticesView } from './components/PracticesView';
 import { BeginnerRecognitionLab } from './components/BeginnerRecognitionLab';
 import { ReportView } from './components/ReportView';
 import { ClientRequestView } from './components/ClientRequestView';
+import { DiagnosticsView } from './components/DiagnosticsView';
+import { PhotoAnalysisView } from './components/PhotoAnalysisView';
+import { VisualExplanationsView } from './components/VisualExplanationsView';
+import { PhaseBalancingView } from './components/PhaseBalancingView';
 import { HelpModal } from './components/HelpModal';
 import { ProjectManagerModal } from './components/ProjectManagerModal';
 import { AcometidaPilarModal } from './components/AcometidaPilarModal';
@@ -70,8 +74,20 @@ export default function App() {
   const [activeWireType, setActiveWireType] = useState<ConductorType>('fase');
 
   // Elemento seleccionado en el plano
-  const [selectedElementType, setSelectedElementType] = useState<'symbol' | 'wire' | 'room' | 'wall' | null>(null);
+  const [selectedElementType, setSelectedElementType] = useState<'symbol' | 'wire' | 'room' | 'wall' | 'door' | 'window' | null>(null);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
+
+  // Modo de interfaz (Aprendizaje vs Profesional)
+  const interfaceMode = project.metadata.interfaceMode || 'aprendizaje';
+  const handleToggleInterfaceMode = useCallback(() => {
+    setProject((prev) => ({
+      ...prev,
+      metadata: {
+        ...prev.metadata,
+        interfaceMode: prev.metadata.interfaceMode === 'profesional' ? 'aprendizaje' : 'profesional',
+      },
+    }));
+  }, []);
 
   // Estado de guardado y modales
   const [saveStatus, setSaveStatus] = useState<string>('Guardado');
@@ -305,6 +321,8 @@ export default function App() {
         onShowHelp={() => setIsHelpOpen(true)}
         isSimulating={simState.activeLamps.size > 0}
         saveStatus={saveStatus}
+        interfaceMode={interfaceMode}
+        onToggleInterfaceMode={handleToggleInterfaceMode}
       />
 
       {/* 2. Pestañas de Navegación */}
@@ -556,6 +574,35 @@ export default function App() {
               }));
             }}
           />
+        )}
+
+        {activeTab === 'diagnostico' && (
+          <DiagnosticsView
+            project={project}
+            onUpdateProject={updateProject}
+            onLocateOnCAD={(fault) => {
+              setActiveTab('plano');
+              if (fault.involvedComponentIds && fault.involvedComponentIds[0]) {
+                setSelectedElementType('symbol');
+                setSelectedElementId(fault.involvedComponentIds[0]);
+              } else if (fault.involvedWireIds && fault.involvedWireIds[0]) {
+                setSelectedElementType('wire');
+                setSelectedElementId(fault.involvedWireIds[0]);
+              }
+            }}
+          />
+        )}
+
+        {activeTab === 'analizar_foto' && (
+          <PhotoAnalysisView project={project} />
+        )}
+
+        {activeTab === 'explicaciones' && (
+          <VisualExplanationsView />
+        )}
+
+        {activeTab === 'trifasica' && (
+          <PhaseBalancingView project={project} onUpdateProject={updateProject} />
         )}
 
         {activeTab === 'circuitos' && (

@@ -31,11 +31,23 @@ export interface ElectricalSymbol {
   x: number; // Posición X en px
   y: number; // Posición Y en px
   rotation: number; // 0, 90, 180, 270 grados
+  flipH?: boolean; // Inversión horizontal
+  flipV?: boolean; // Inversión vertical
   circuitId?: string; // Id del circuito asociado (ej: "C1")
   powerWatts: number; // Potencia en Vatios (W)
-  voltage: number; // Tensión nominal (ej: 220 V)
+  voltage: number; // Tensión nominal (ej: 220 V o 380 V)
   powerFactor: number; // cos phi (ej: 0.9 o 1.0)
   terminals: Terminal[];
+  // Campos para cargas especiales, bombas y taller
+  equipmentType?: 'domestico' | 'comercial' | 'taller' | 'industrial_ligero';
+  phasesCount?: 1 | 3;
+  assignedPhase?: 'R' | 'S' | 'T' | 'R-S-T';
+  ratedCurrentAmps?: number;
+  efficiency?: number; // Rendimiento η (0.8 - 0.95)
+  startingMethod?: 'directo' | 'estrella_triangulo' | 'arrancador_suave' | 'variador';
+  dutyCyclePercent?: number; // Factor de marcha / servicio en soldadoras (ej 60%)
+  inputCurrentAmps?: number; // Corriente I1max en soldadoras (A)
+  pumpType?: 'sumergible' | 'presurizadora' | 'pozo_profundo' | 'achique' | 'recirculacion' | 'piscina';
   // Estados dinámicos para simulación
   state?: {
     isOpen?: boolean; // Para interruptores y teclas (true = abierto / apagado, false = cerrado / encendido)
@@ -69,6 +81,7 @@ export interface Wire {
   isEnergized?: boolean; // Para visualización en el simulador
   hasCurrent?: boolean; // Si circula corriente
   // Opciones avanzadas de especificación y canalización
+  conductorMaterial?: 'Cu' | 'Al';
   routingMode?: 'bezier' | 'orthogonal';
   conduitType?: 'corrugado_ignifugo' | 'pvc_rigido' | 'canaleta' | 'acero_semipesado';
   conduitDiameterMm?: number; // 19 (3/4"), 22 (7/8"), 25 (1")
@@ -76,6 +89,10 @@ export interface Wire {
   installationMethod?: 'B1' | 'B2' | 'C'; // AEA 90364-771
   insulationType?: 'PVC_70' | 'LS0H_90';
   isManualOverride?: boolean;
+  calculatedCurrentAmps?: number;
+  voltageDropPercent?: number;
+  verificationStatus?: 'optimo' | 'advertencia' | 'critico';
+  verificationNote?: string;
 }
 
 export interface Room {
@@ -98,6 +115,14 @@ export interface ArchElement {
   x2: number;
   y2: number;
   thickness?: number;
+  rotation?: number; // Rotación en grados (0-360)
+  flipH?: boolean; // Inversión horizontal
+  flipV?: boolean; // Inversión vertical
+  swingDirection?: 'interior' | 'exterior'; // Apertura hacia adentro o afuera
+  hingeSide?: 'izquierda' | 'derecha'; // Ubicación de la bisagra
+  width?: number; // Ancho nominal en px
+  name?: string;
+  wallId?: string; // Muro contenedor opcional
 }
 
 export type CircuitType = 'IUG' | 'TUG' | 'IUE' | 'TUE' | 'AC' | 'OTRO';
@@ -108,6 +133,7 @@ export interface Circuit {
   type: CircuitType;
   voltage: number; // 220 o 380 V
   phases: 1 | 3;
+  assignedPhase?: 'R' | 'S' | 'T' | 'R-S-T'; // Fase asignada en trifásica
   powerFactor: number; // cos φ
   conductorMaterial: 'Cu' | 'Al';
   crossSectionMm2: number; // 1.5, 2.5, 4, 6, 10
@@ -161,6 +187,8 @@ export interface ProjectMetadata {
   snapToGrid: boolean;
   showDimensions: boolean;
   scale: number; // px per meter
+  supplyType?: 'monofasica_220v' | 'trifasica_380v' | 'trifasica_sin_neutro';
+  interfaceMode?: 'aprendizaje' | 'profesional';
 }
 
 export interface Project {

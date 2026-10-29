@@ -13,6 +13,10 @@ import {
   FileText,
   Sparkles,
   ClipboardList,
+  Activity,
+  Scan,
+  Sliders,
+  ArrowRightLeft,
 } from 'lucide-react';
 
 export type ActiveTab =
@@ -24,6 +28,10 @@ export type ActiveTab =
   | 'materiales'
   | 'practicas'
   | 'aprender'
+  | 'diagnostico'
+  | 'analizar_foto'
+  | 'explicaciones'
+  | 'trifasica'
   | 'solicitud'
   | 'informe';
 
@@ -66,6 +74,36 @@ export const Navigation: React.FC<NavigationProps> = ({
       icon: PlayCircle,
       badge: activeLampsCount > 0 ? `${activeLampsCount} enc.` : null,
       badgeColor: 'text-amber-400 bg-amber-950/60 border-amber-700/50',
+    },
+    {
+      id: 'diagnostico' as ActiveTab,
+      label: 'Diagnóstico & Fallas',
+      icon: Activity,
+      badge: hasErrors ? 'Falla' : 'Auditoría',
+      badgeColor: hasErrors
+        ? 'text-red-400 bg-red-950/60 border-red-700/50'
+        : 'text-emerald-400 bg-emerald-950/60 border-emerald-700/50',
+    },
+    {
+      id: 'analizar_foto' as ActiveTab,
+      label: 'Analizar Foto',
+      icon: Scan,
+      badge: 'Visual',
+      badgeColor: 'text-cyan-400 bg-cyan-950/60 border-cyan-700/50',
+    },
+    {
+      id: 'explicaciones' as ActiveTab,
+      label: 'Explicaciones Visuales',
+      icon: Sparkles,
+      badge: 'Animado',
+      badgeColor: 'text-amber-400 bg-amber-950/60 border-amber-700/50',
+    },
+    {
+      id: 'trifasica' as ActiveTab,
+      label: 'Balance Fases',
+      icon: ArrowRightLeft,
+      badge: 'R-S-T',
+      badgeColor: 'text-purple-400 bg-purple-950/60 border-purple-700/50',
     },
     {
       id: 'circuitos' as ActiveTab,

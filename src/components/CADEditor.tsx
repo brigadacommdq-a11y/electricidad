@@ -54,8 +54,8 @@ interface CADEditorProps {
   selectedCircuitId: string;
   activeWireType: ConductorType;
   selectedElementId: string | null;
-  selectedElementType: 'symbol' | 'wire' | 'room' | 'wall' | null;
-  onSelectElement: (type: 'symbol' | 'wire' | 'room' | 'wall' | null, id: string | null) => void;
+  selectedElementType: 'symbol' | 'wire' | 'room' | 'wall' | 'door' | 'window' | null;
+  onSelectElement: (type: 'symbol' | 'wire' | 'room' | 'wall' | 'door' | 'window' | null, id: string | null) => void;
   onToggleSwitch: (symbolId: string) => void;
   isSimulating: boolean;
   simState?: SimulationState;
@@ -137,6 +137,17 @@ export const CADEditor: React.FC<CADEditorProps> = ({
     roomY: number;
     roomWidth: number;
     roomHeight: number;
+  } | null>(null);
+
+  // Arrastre independiente de elementos arquitectónicos (puertas, ventanas, muros)
+  const [draggingArchId, setDraggingArchId] = useState<string | null>(null);
+  const [archDragStart, setArchDragStart] = useState<{
+    cursorX: number;
+    cursorY: number;
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
   } | null>(null);
 
   // Modal de confirmación para borrado de habitación con componentes interiores
@@ -367,6 +378,26 @@ export const CADEditor: React.FC<CADEditorProps> = ({
           return { ...r, x: newX, y: newY, width: newW, height: newH };
         }),
       }));
+    } else if (draggingArchId && archDragStart) {
+      const rawDx = coords.x - archDragStart.cursorX;
+      const rawDy = coords.y - archDragStart.cursorY;
+      const dx = snapToGrid ? Math.round(rawDx / gridSize) * gridSize : rawDx;
+      const dy = snapToGrid ? Math.round(rawDy / gridSize) * gridSize : rawDy;
+
+      onUpdateProject((prev) => ({
+        ...prev,
+        architecturalElements: prev.architecturalElements.map((a) =>
+          a.id === draggingArchId
+            ? {
+                ...a,
+                x1: archDragStart.x1 + dx,
+                y1: archDragStart.y1 + dy,
+                x2: archDragStart.x2 + dx,
+                y2: archDragStart.y2 + dy,
+              }
+            : a
+        ),
+      }));
     }
   };
 
@@ -377,6 +408,8 @@ export const CADEditor: React.FC<CADEditorProps> = ({
     setRoomDragStart(null);
     setResizingRoomCorner(null);
     setRoomResizeStart(null);
+    setDraggingArchId(null);
+    setArchDragStart(null);
   };
 
   // Manejo de eventos Touch avanzados (móvil y tablet):
@@ -1444,7 +1477,10 @@ export const CADEditor: React.FC<CADEditorProps> = ({
 
           {/* 2. Elementos arquitectónicos (Muros, Puertas, Ventanas) */}
           {project.architecturalElements.map((elem) => {
-            const isSelected = selectedElementType === 'wall' && selectedElementId === elem.id;
+            const isSelected =
+              (selectedElementType === elem.type || (selectedElementType === 'wall' && elem.type === 'wall')) &&
+              selectedElementId === elem.id;
+
             if (elem.type === 'wall') {
               return (
                 <line
@@ -1456,68 +1492,173 @@ export const CADEditor: React.FC<CADEditorProps> = ({
                   stroke={isSelected ? '#f59e0b' : '#475569'}
                   strokeWidth={elem.thickness || 10}
                   strokeLinecap="round"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSelectElement('wall', elem.id);
+                  onMouseDown={(e) => {
+                    if (activeTool === 'select' && !isPanMode) {
+                      e.stopPropagation();
+                      onSelectElement('wall', elem.id);
+                      const coords = getSVGCoordinates(e.clientX, e.clientY);
+                      setDraggingArchId(elem.id);
+                      setArchDragStart({
+                        cursorX: coords.x,
+                        cursorY: coords.y,
+                        x1: elem.x1,
+                        y1: elem.y1,
+                        x2: elem.x2,
+                        y2: elem.y2,
+                      });
+                    }
                   }}
-                  className="cursor-pointer"
+                  className="cursor-move"
                 />
               );
             } else if (elem.type === 'door') {
-              // Arco de puerta
+              // Geometría y apertura de puerta
+              const dx = elem.x2 - elem.x1;
+              const dy = elem.y2 - elem.y1;
+              const doorLength = Math.max(30, Math.round(Math.sqrt(dx * dx + dy * dy)));
+              const isExterior = elem.swingDirection === 'exterior';
+              const isRightHinge = elem.hingeSide === 'derecha';
+              const sweepFlag = (isExterior && !isRightHinge) || (!isExterior && isRightHinge) ? 1 : 0;
+              const arcRadius = doorLength;
+
               return (
                 <g
                   key={elem.id}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSelectElement('wall', elem.id);
+                  onMouseDown={(e) => {
+                    if (activeTool === 'select' && !isPanMode) {
+                      e.stopPropagation();
+                      onSelectElement('door', elem.id);
+                      const coords = getSVGCoordinates(e.clientX, e.clientY);
+                      setDraggingArchId(elem.id);
+                      setArchDragStart({
+                        cursorX: coords.x,
+                        cursorY: coords.y,
+                        x1: elem.x1,
+                        y1: elem.y1,
+                        x2: elem.x2,
+                        y2: elem.y2,
+                      });
+                    }
                   }}
-                  className="cursor-pointer"
+                  className="cursor-move"
                 >
+                  {/* Hoja de la puerta */}
                   <line
                     x1={elem.x1}
                     y1={elem.y1}
                     x2={elem.x2}
                     y2={elem.y2}
                     stroke={isSelected ? '#f59e0b' : '#94a3b8'}
-                    strokeWidth={4}
+                    strokeWidth={5}
+                    strokeLinecap="round"
                   />
+
+                  {/* Arco de barrido de apertura */}
                   <path
-                    d={`M ${elem.x1} ${elem.y1} A ${elem.y2 - elem.y1} ${elem.y2 - elem.y1} 0 0 1 ${elem.x1 + (elem.y2 - elem.y1)} ${elem.y2}`}
+                    d={`M ${elem.x1} ${elem.y1} A ${arcRadius} ${arcRadius} 0 0 ${sweepFlag} ${
+                      isExterior ? elem.x1 + (isRightHinge ? -arcRadius : arcRadius) : elem.x1 + (isRightHinge ? arcRadius : -arcRadius)
+                    } ${elem.y2}`}
                     fill="none"
                     stroke={isSelected ? '#f59e0b' : '#64748b'}
                     strokeWidth={1.5}
-                    strokeDasharray="2,2"
+                    strokeDasharray="3,3"
                   />
+
+                  {/* Manija / Punto de bisagra */}
+                  <circle cx={elem.x1} cy={elem.y1} r={3.5} fill="#f59e0b" />
+
+                  {/* Indicador de selección y controles rápidos si está seleccionada */}
+                  {isSelected && (
+                    <g className="pointer-events-auto">
+                      <rect
+                        x={Math.min(elem.x1, elem.x2) - 8}
+                        y={Math.min(elem.y1, elem.y2) - 8}
+                        width={Math.abs(elem.x2 - elem.x1) + 16}
+                        height={Math.abs(elem.y2 - elem.y1) + 16}
+                        fill="none"
+                        stroke="#f59e0b"
+                        strokeWidth={1}
+                        strokeDasharray="4,2"
+                      />
+                      {/* Botón flotante para alternar sentido de apertura */}
+                      <g
+                        transform={`translate(${(elem.x1 + elem.x2) / 2}, ${(elem.y1 + elem.y2) / 2 - 20})`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onUpdateProject((prev) => ({
+                            ...prev,
+                            architecturalElements: prev.architecturalElements.map((a) =>
+                              a.id === elem.id
+                                ? { ...a, swingDirection: a.swingDirection === 'exterior' ? 'interior' : 'exterior' }
+                                : a
+                            ),
+                          }));
+                        }}
+                        className="cursor-pointer"
+                      >
+                        <rect x="-35" y="-10" width="70" height="20" rx="10" fill="#0f172a" stroke="#f59e0b" strokeWidth="1" />
+                        <text x="0" y="3" textAnchor="middle" fill="#fcd34d" fontSize="8" fontWeight="bold">
+                          {elem.swingDirection === 'exterior' ? '⇄ Afuera' : '⇄ Adentro'}
+                        </text>
+                      </g>
+                    </g>
+                  )}
                 </g>
               );
             } else if (elem.type === 'window') {
-              // Ventana (doble línea vidriada)
+              // Ventana (doble línea vidriada con marco)
               return (
                 <g
                   key={elem.id}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSelectElement('wall', elem.id);
+                  onMouseDown={(e) => {
+                    if (activeTool === 'select' && !isPanMode) {
+                      e.stopPropagation();
+                      onSelectElement('window', elem.id);
+                      const coords = getSVGCoordinates(e.clientX, e.clientY);
+                      setDraggingArchId(elem.id);
+                      setArchDragStart({
+                        cursorX: coords.x,
+                        cursorY: coords.y,
+                        x1: elem.x1,
+                        y1: elem.y1,
+                        x2: elem.x2,
+                        y2: elem.y2,
+                      });
+                    }
                   }}
-                  className="cursor-pointer"
+                  className="cursor-move"
                 >
+                  {/* Marco de ventana */}
                   <line
                     x1={elem.x1}
                     y1={elem.y1}
                     x2={elem.x2}
                     y2={elem.y2}
                     stroke={isSelected ? '#f59e0b' : '#38bdf8'}
-                    strokeWidth={6}
+                    strokeWidth={8}
+                    strokeLinecap="square"
                   />
+                  {/* Doble vidriado interior */}
                   <line
                     x1={elem.x1}
                     y1={elem.y1}
                     x2={elem.x2}
                     y2={elem.y2}
                     stroke="#ffffff"
-                    strokeWidth={1.5}
+                    strokeWidth={2}
                   />
+                  {isSelected && (
+                    <rect
+                      x={Math.min(elem.x1, elem.x2) - 6}
+                      y={Math.min(elem.y1, elem.y2) - 6}
+                      width={Math.abs(elem.x2 - elem.x1) + 12}
+                      height={Math.abs(elem.y2 - elem.y1) + 12}
+                      fill="none"
+                      stroke="#f59e0b"
+                      strokeWidth={1}
+                      strokeDasharray="4,2"
+                    />
+                  )}
                 </g>
               );
             }

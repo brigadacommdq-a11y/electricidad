@@ -19,6 +19,7 @@ import {
   Menu,
   X,
   MoreVertical,
+  GraduationCap,
 } from 'lucide-react';
 import { Project } from '../types/electra';
 
@@ -41,6 +42,8 @@ interface HeaderProps {
   onShowHelp: () => void;
   isSimulating: boolean;
   saveStatus: string;
+  interfaceMode: 'aprendizaje' | 'profesional';
+  onToggleInterfaceMode: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -62,6 +65,8 @@ export const Header: React.FC<HeaderProps> = ({
   onShowHelp,
   isSimulating,
   saveStatus,
+  interfaceMode,
+  onToggleInterfaceMode,
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -85,6 +90,20 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="text-emerald-400 font-medium">{saveStatus}</span>
             </div>
           </div>
+
+          {/* Selector de Modo: Aprendizaje vs Profesional */}
+          <button
+            onClick={onToggleInterfaceMode}
+            title={interfaceMode === 'aprendizaje' ? 'Cambiar a Modo Profesional' : 'Cambiar a Modo Aprendizaje'}
+            className={`hidden lg:flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold rounded-full transition-all border shadow-xs ml-1 ${
+              interfaceMode === 'aprendizaje'
+                ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/25'
+                : 'bg-amber-500/15 text-amber-300 border-amber-500/40 hover:bg-amber-500/25'
+            }`}
+          >
+            <GraduationCap className="w-3.5 h-3.5 text-current" />
+            <span>{interfaceMode === 'aprendizaje' ? 'Modo Aprendizaje' : 'Modo Profesional'}</span>
+          </button>
         </div>
 
         {/* Acciones para Móvil (< md) */}
@@ -307,6 +326,26 @@ export const Header: React.FC<HeaderProps> = ({
                   <X className="w-4 h-4" />
                 </button>
               </div>
+            </div>
+
+            {/* Alternador de Modo Móvil */}
+            <div className="mb-3">
+              <button
+                onClick={() => {
+                  onToggleInterfaceMode();
+                }}
+                className={`w-full flex items-center justify-between p-3 rounded-xl border text-xs font-bold transition-all ${
+                  interfaceMode === 'aprendizaje'
+                    ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-300'
+                    : 'bg-amber-500/15 border-amber-500/50 text-amber-300'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <GraduationCap className="w-4 h-4" />
+                  <span>Modo Activo: {interfaceMode === 'aprendizaje' ? 'Aprendizaje' : 'Profesional'}</span>
+                </div>
+                <span className="text-[10px] underline">Tocar para cambiar</span>
+              </button>
             </div>
 
             {/* Grid de Acciones Principales en Celular */}

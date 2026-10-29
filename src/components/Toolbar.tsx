@@ -17,6 +17,7 @@ import {
   Box,
   Compass,
   X,
+  Wrench,
 } from 'lucide-react';
 import { SYMBOL_TEMPLATES, SymbolTemplate } from '../services/symbolCatalog';
 import { Circuit, ConductorType } from '../types/electra';
@@ -50,18 +51,49 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onAddPresetRoom,
   onClose,
 }) => {
-  const [activeCategory, setActiveCategory] = useState<'utilizacion' | 'comando' | 'tablero' | 'canalizacion' | 'habitaciones'>('utilizacion');
+  const [activeCategory, setActiveCategory] = useState<'utilizacion' | 'comando' | 'tablero' | 'taller' | 'canalizacion' | 'habitaciones'>('utilizacion');
 
   const categories = [
-    { id: 'utilizacion' as const, label: 'Cargas y Luces', icon: Lightbulb },
+    { id: 'utilizacion' as const, label: 'Ilum. y Tomas', icon: Lightbulb },
+    { id: 'taller' as const, label: 'Bombas & Taller', icon: Wrench },
     { id: 'comando' as const, label: 'Comandos', icon: ToggleLeft },
     { id: 'tablero' as const, label: 'Protecciones', icon: ShieldAlert },
     { id: 'canalizacion' as const, label: 'Cajas & PAT', icon: Box },
-    { id: 'habitaciones' as const, label: 'Habitaciones', icon: Square },
+    { id: 'habitaciones' as const, label: 'Ambientes', icon: Square },
   ];
 
   const filteredTemplates = SYMBOL_TEMPLATES.filter((t) => {
     if (activeCategory === 'tablero') return t.category === 'tablero' || t.category === 'proteccion';
+    if (activeCategory === 'taller') {
+      return (
+        t.type.startsWith('bomba') ||
+        t.type.startsWith('soldadora') ||
+        t.type === 'compresor_aire' ||
+        t.type === 'taladro_banco' ||
+        t.type === 'amoladora_banco' ||
+        t.type === 'torno_metales' ||
+        t.type === 'fresadora' ||
+        t.type === 'sierra_electrica' ||
+        t.type === 'extractor_industrial' ||
+        t.type === 'colector_polvo' ||
+        t.type === 'polipasto_electrico'
+      );
+    }
+    if (activeCategory === 'utilizacion') {
+      const isTaller =
+        t.type.startsWith('bomba') ||
+        t.type.startsWith('soldadora') ||
+        t.type === 'compresor_aire' ||
+        t.type === 'taladro_banco' ||
+        t.type === 'amoladora_banco' ||
+        t.type === 'torno_metales' ||
+        t.type === 'fresadora' ||
+        t.type === 'sierra_electrica' ||
+        t.type === 'extractor_industrial' ||
+        t.type === 'colector_polvo' ||
+        t.type === 'polipasto_electrico';
+      return t.category === 'utilizacion' && !isTaller;
+    }
     return t.category === activeCategory;
   });
 

@@ -378,6 +378,262 @@ export const SYMBOL_TEMPLATES: SymbolTemplate[] = [
       { id: 'PE', name: 'Tierra (PE)', type: 'tierra', relX: 0, relY: 15 },
     ],
   },
+  {
+    type: 'bomba_sumergible',
+    category: 'utilizacion',
+    name: 'Bomba Sumergible de Pozo (1.5 HP / 1100W)',
+    labelPrefix: 'BSUM',
+    defaultPowerWatts: 1100,
+    defaultCircuitType: 'TUE',
+    description: 'Bomba sumergible encapsulada en acero inoxidable con capacitor de arranque y protección térmica.',
+    normativeRef: 'IRAM 2071 / AEA 771',
+    terminals: [
+      { id: 'L', name: 'Fase (L)', type: 'fase', relX: -16, relY: -8 },
+      { id: 'N', name: 'Neutro (N)', type: 'neutro', relX: 16, relY: -8 },
+      { id: 'PE', name: 'Tierra (PE)', type: 'tierra', relX: 0, relY: 15 },
+    ],
+  },
+  {
+    type: 'bomba_presurizadora',
+    category: 'utilizacion',
+    name: 'Bomba Presurizadora de Caudal (250W)',
+    labelPrefix: 'BPRE',
+    defaultPowerWatts: 250,
+    defaultCircuitType: 'TUG',
+    description: 'Bomba con sensor de flujo de encendido automático para aumentar presión de ducha y canillas.',
+    normativeRef: 'AEA 90364-771',
+    terminals: [
+      { id: 'L', name: 'Fase (L)', type: 'fase', relX: -14, relY: -8 },
+      { id: 'N', name: 'Neutro (N)', type: 'neutro', relX: 14, relY: -8 },
+      { id: 'PE', name: 'Tierra (PE)', type: 'tierra', relX: 0, relY: 15 },
+    ],
+  },
+  {
+    type: 'bomba_pozo_profundo',
+    category: 'utilizacion',
+    name: 'Bomba Pozo Profundo Multietapa (2 HP / 1500W)',
+    labelPrefix: 'BPOZ',
+    defaultPowerWatts: 1500,
+    defaultCircuitType: 'TUE',
+    description: 'Electrobomba para napas profundas con tablero de control de nivel y protección por sobrecarga.',
+    normativeRef: 'AEA 90364-771',
+    terminals: [
+      { id: 'L', name: 'Fase (L)', type: 'fase', relX: -16, relY: -8 },
+      { id: 'N', name: 'Neutro (N)', type: 'neutro', relX: 16, relY: -8 },
+      { id: 'PE', name: 'Tierra (PE)', type: 'tierra', relX: 0, relY: 15 },
+    ],
+  },
+  {
+    type: 'bomba_achique',
+    category: 'utilizacion',
+    name: 'Bomba de Achique / Pluvial (750W)',
+    labelPrefix: 'BACH',
+    defaultPowerWatts: 750,
+    defaultCircuitType: 'TUE',
+    description: 'Bomba sumergible para aguas sucias o pluviales con interruptor flotante de nivel incorporado.',
+    normativeRef: 'AEA 90364-771',
+    terminals: [
+      { id: 'L', name: 'Fase (L)', type: 'fase', relX: -16, relY: -8 },
+      { id: 'N', name: 'Neutro (N)', type: 'neutro', relX: 16, relY: -8 },
+      { id: 'PE', name: 'Tierra (PE)', type: 'tierra', relX: 0, relY: 15 },
+    ],
+  },
+  {
+    type: 'bomba_recirculacion',
+    category: 'utilizacion',
+    name: 'Bomba de Recirculación Sanitaria (100W)',
+    labelPrefix: 'BREC',
+    defaultPowerWatts: 100,
+    defaultCircuitType: 'TUG',
+    description: 'Bomba circuladora silenciosa de rotor húmedo para agua caliente o losa radiante.',
+    normativeRef: 'AEA 90364-771',
+    terminals: [
+      { id: 'L', name: 'Fase (L)', type: 'fase', relX: -14, relY: -8 },
+      { id: 'N', name: 'Neutro (N)', type: 'neutro', relX: 14, relY: -8 },
+      { id: 'PE', name: 'Tierra (PE)', type: 'tierra', relX: 0, relY: 15 },
+    ],
+  },
+  {
+    type: 'bomba_piscina',
+    category: 'utilizacion',
+    name: 'Bomba Autocebante para Piscina (1 HP / 750W)',
+    labelPrefix: 'BPIS',
+    defaultPowerWatts: 750,
+    defaultCircuitType: 'TUE',
+    description: 'Electrobomba con canasto trampa de hojas para filtrado y recirculación de piscina.',
+    normativeRef: 'AEA 90364-702 (Piscinas)',
+    terminals: [
+      { id: 'L', name: 'Fase (L)', type: 'fase', relX: -16, relY: -8 },
+      { id: 'N', name: 'Neutro (N)', type: 'neutro', relX: 16, relY: -8 },
+      { id: 'PE', name: 'Tierra (PE)', type: 'tierra', relX: 0, relY: 15 },
+    ],
+  },
+  // --- MÁQUINAS DE TALLER Y CARGAS PESADAS ---
+  {
+    type: 'soldadora_transformador',
+    category: 'utilizacion',
+    name: 'Soldadora por Transformador (4500VA)',
+    labelPrefix: 'SOLD-TR',
+    defaultPowerWatts: 3600,
+    defaultCircuitType: 'TUE',
+    description: 'Soldadora de arco por transformador tradicional. Factor de marcha 40%, corriente absorbida I1max 25A.',
+    normativeRef: 'IRAM-IAS U 500-136 / AEA 771',
+    terminals: [
+      { id: 'L', name: 'Fase (L)', type: 'fase', relX: -18, relY: -8 },
+      { id: 'N', name: 'Neutro (N)', type: 'neutro', relX: 18, relY: -8 },
+      { id: 'PE', name: 'Tierra (PE)', type: 'tierra', relX: 0, relY: 16 },
+    ],
+  },
+  {
+    type: 'soldadora_inverter',
+    category: 'utilizacion',
+    name: 'Soldadora Inverter MMA/TIG (3500W)',
+    labelPrefix: 'SOLD-INV',
+    defaultPowerWatts: 3000,
+    defaultCircuitType: 'TUE',
+    description: 'Soldadora electrónica Inverter de alta eficiencia. Factor de marcha 60%, corriente I1max 16A.',
+    normativeRef: 'IEC 60974-1 / AEA 771',
+    terminals: [
+      { id: 'L', name: 'Fase (L)', type: 'fase', relX: -16, relY: -8 },
+      { id: 'N', name: 'Neutro (N)', type: 'neutro', relX: 16, relY: -8 },
+      { id: 'PE', name: 'Tierra (PE)', type: 'tierra', relX: 0, relY: 15 },
+    ],
+  },
+  {
+    type: 'compresor_aire',
+    category: 'utilizacion',
+    name: 'Compresor de Aire 50L (2.5 HP / 1850W)',
+    labelPrefix: 'COMP',
+    defaultPowerWatts: 1850,
+    defaultCircuitType: 'TUE',
+    description: 'Compresor a pistón con presóstato y válvula de alivio para herramientas neumáticas y pintura.',
+    normativeRef: 'IRAM 2071 / AEA 771',
+    terminals: [
+      { id: 'L', name: 'Fase (L)', type: 'fase', relX: -16, relY: -8 },
+      { id: 'N', name: 'Neutro (N)', type: 'neutro', relX: 16, relY: -8 },
+      { id: 'PE', name: 'Tierra (PE)', type: 'tierra', relX: 0, relY: 15 },
+    ],
+  },
+  {
+    type: 'taladro_banco',
+    category: 'utilizacion',
+    name: 'Taladro de Banco de Columna (550W)',
+    labelPrefix: 'TBAN',
+    defaultPowerWatts: 550,
+    defaultCircuitType: 'TUG',
+    description: 'Taladro vertical de banco con poleas escalonadas y mandril de 16mm con guarda de seguridad.',
+    normativeRef: 'AEA 771',
+    terminals: [
+      { id: 'L', name: 'Fase (L)', type: 'fase', relX: -14, relY: -8 },
+      { id: 'N', name: 'Neutro (N)', type: 'neutro', relX: 14, relY: -8 },
+      { id: 'PE', name: 'Tierra (PE)', type: 'tierra', relX: 0, relY: 15 },
+    ],
+  },
+  {
+    type: 'amoladora_banco',
+    category: 'utilizacion',
+    name: 'Amoladora de Banco Doble Piedra (375W)',
+    labelPrefix: 'AMOL',
+    defaultPowerWatts: 375,
+    defaultCircuitType: 'TUG',
+    description: 'Amoladora fija para desbaste y afilado de herramientas con protectores oculares.',
+    normativeRef: 'AEA 771',
+    terminals: [
+      { id: 'L', name: 'Fase (L)', type: 'fase', relX: -14, relY: -8 },
+      { id: 'N', name: 'Neutro (N)', type: 'neutro', relX: 14, relY: -8 },
+      { id: 'PE', name: 'Tierra (PE)', type: 'tierra', relX: 0, relY: 15 },
+    ],
+  },
+  {
+    type: 'torno_metales',
+    category: 'utilizacion',
+    name: 'Torno Paralelo de Taller (1500W)',
+    labelPrefix: 'TORN',
+    defaultPowerWatts: 1500,
+    defaultCircuitType: 'TUE',
+    description: 'Torno para mecanizado de metales con plato de 3 mordazas y avance automático.',
+    normativeRef: 'AEA 771',
+    terminals: [
+      { id: 'L', name: 'Fase (L)', type: 'fase', relX: -16, relY: -8 },
+      { id: 'N', name: 'Neutro (N)', type: 'neutro', relX: 16, relY: -8 },
+      { id: 'PE', name: 'Tierra (PE)', type: 'tierra', relX: 0, relY: 15 },
+    ],
+  },
+  {
+    type: 'fresadora',
+    category: 'utilizacion',
+    name: 'Fresadora Vertical (2200W)',
+    labelPrefix: 'FRES',
+    defaultPowerWatts: 2200,
+    defaultCircuitType: 'TUE',
+    description: 'Fresadora para ranurado y mecanizado con mesa en cruz y parada de emergencia por hongo.',
+    normativeRef: 'AEA 771',
+    terminals: [
+      { id: 'L', name: 'Fase (L)', type: 'fase', relX: -16, relY: -8 },
+      { id: 'N', name: 'Neutro (N)', type: 'neutro', relX: 16, relY: -8 },
+      { id: 'PE', name: 'Tierra (PE)', type: 'tierra', relX: 0, relY: 15 },
+    ],
+  },
+  {
+    type: 'sierra_electrica',
+    category: 'utilizacion',
+    name: 'Sierra Circular / Sinfín de Mesa (1800W)',
+    labelPrefix: 'SIER',
+    defaultPowerWatts: 1800,
+    defaultCircuitType: 'TUE',
+    description: 'Sierra estacionaria de corte con guía paralela y freno electromagnético de disco.',
+    normativeRef: 'AEA 771',
+    terminals: [
+      { id: 'L', name: 'Fase (L)', type: 'fase', relX: -16, relY: -8 },
+      { id: 'N', name: 'Neutro (N)', type: 'neutro', relX: 16, relY: -8 },
+      { id: 'PE', name: 'Tierra (PE)', type: 'tierra', relX: 0, relY: 15 },
+    ],
+  },
+  {
+    type: 'extractor_industrial',
+    category: 'utilizacion',
+    name: 'Extractor Axial / Centrífugo de Taller (400W)',
+    labelPrefix: 'EXTR',
+    defaultPowerWatts: 400,
+    defaultCircuitType: 'TUG',
+    description: 'Ventilación forzada y evacuación de humos y vapores para área de soldadura.',
+    normativeRef: 'AEA 771',
+    terminals: [
+      { id: 'L', name: 'Fase (L)', type: 'fase', relX: -14, relY: -8 },
+      { id: 'N', name: 'Neutro (N)', type: 'neutro', relX: 14, relY: -8 },
+      { id: 'PE', name: 'Tierra (PE)', type: 'tierra', relX: 0, relY: 15 },
+    ],
+  },
+  {
+    type: 'colector_polvo',
+    category: 'utilizacion',
+    name: 'Colector de Polvo y Viruta (1500W)',
+    labelPrefix: 'COLP',
+    defaultPowerWatts: 1500,
+    defaultCircuitType: 'TUE',
+    description: 'Sistema de aspiración ciclónica para máquinas de carpintería con bolsa filtrante.',
+    normativeRef: 'AEA 771',
+    terminals: [
+      { id: 'L', name: 'Fase (L)', type: 'fase', relX: -16, relY: -8 },
+      { id: 'N', name: 'Neutro (N)', type: 'neutro', relX: 16, relY: -8 },
+      { id: 'PE', name: 'Tierra (PE)', type: 'tierra', relX: 0, relY: 15 },
+    ],
+  },
+  {
+    type: 'polipasto_electrico',
+    category: 'utilizacion',
+    name: 'Aparejo / Polipasto Eléctrico (1000W)',
+    labelPrefix: 'POLI',
+    defaultPowerWatts: 1000,
+    defaultCircuitType: 'TUE',
+    description: 'Polipasto de izaje con cable de acero, final de carrera superior e inferior y botonera colgante.',
+    normativeRef: 'AEA 771',
+    terminals: [
+      { id: 'L', name: 'Fase (L)', type: 'fase', relX: -16, relY: -8 },
+      { id: 'N', name: 'Neutro (N)', type: 'neutro', relX: 16, relY: -8 },
+      { id: 'PE', name: 'Tierra (PE)', type: 'tierra', relX: 0, relY: 15 },
+    ],
+  },
 
   // --- CANALIZACIONES Y EMPALMES ---
   {
@@ -671,6 +927,74 @@ export function getComponentLabelInfo(symbol: ElectricalSymbol, circuits?: { id:
     case 'bomba_agua':
       common = 'BOMBA';
       defaultPrefix = 'BOM';
+      break;
+    case 'bomba_sumergible':
+      common = 'B. SUMERGIBLE';
+      defaultPrefix = 'BSUM';
+      break;
+    case 'bomba_presurizadora':
+      common = 'B. PRESURIZADORA';
+      defaultPrefix = 'BPRE';
+      break;
+    case 'bomba_pozo_profundo':
+      common = 'B. POZO PROF.';
+      defaultPrefix = 'BPOZ';
+      break;
+    case 'bomba_achique':
+      common = 'B. ACHIQUE';
+      defaultPrefix = 'BACH';
+      break;
+    case 'bomba_recirculacion':
+      common = 'B. RECIRCULACIÓN';
+      defaultPrefix = 'BREC';
+      break;
+    case 'bomba_piscina':
+      common = 'B. PISCINA';
+      defaultPrefix = 'BPIS';
+      break;
+    case 'soldadora_transformador':
+      common = 'SOLDADORA TRAFO';
+      defaultPrefix = 'SOLD-TR';
+      break;
+    case 'soldadora_inverter':
+      common = 'SOLDADORA INVERTER';
+      defaultPrefix = 'SOLD-INV';
+      break;
+    case 'compresor_aire':
+      common = 'COMPRESOR';
+      defaultPrefix = 'COMP';
+      break;
+    case 'taladro_banco':
+      common = 'TALADRO BANCO';
+      defaultPrefix = 'TBAN';
+      break;
+    case 'amoladora_banco':
+      common = 'AMOLADORA';
+      defaultPrefix = 'AMOL';
+      break;
+    case 'torno_metales':
+      common = 'TORNO';
+      defaultPrefix = 'TORN';
+      break;
+    case 'fresadora':
+      common = 'FRESADORA';
+      defaultPrefix = 'FRES';
+      break;
+    case 'sierra_electrica':
+      common = 'SIERRA DE MESA';
+      defaultPrefix = 'SIER';
+      break;
+    case 'extractor_industrial':
+      common = 'EXTRACTOR';
+      defaultPrefix = 'EXTR';
+      break;
+    case 'colector_polvo':
+      common = 'COLECTOR POLVO';
+      defaultPrefix = 'COLP';
+      break;
+    case 'polipasto_electrico':
+      common = 'POLIPASTO';
+      defaultPrefix = 'POLI';
       break;
   }
 
