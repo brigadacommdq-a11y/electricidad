@@ -34,7 +34,7 @@ import {
   getActiveProjectId,
   DEMO_PROJECT_ID,
 } from './services/projectStorage';
-import { Compass, Sliders, X, GitCommit } from 'lucide-react';
+import { Compass, Sliders, X, GitCommit, ChevronLeft, ChevronRight, PanelRightClose, PanelRightOpen } from 'lucide-react';
 
 const STORAGE_KEY = 'electra_plan_project_v1';
 
@@ -96,6 +96,39 @@ export default function App() {
   const [isAcometidaModalOpen, setIsAcometidaModalOpen] = useState<boolean>(false);
   const [isMobileToolbarOpen, setIsMobileToolbarOpen] = useState<boolean>(false);
   const [isMobilePropertiesOpen, setIsMobilePropertiesOpen] = useState<boolean>(false);
+
+  // Sistema de Tema: Claro (#F4F6F8) por defecto y Oscuro (#0D161C) con persistencia
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    try {
+      const savedTheme = localStorage.getItem('electra_plan_theme');
+      if (savedTheme === 'dark' || savedTheme === 'light') {
+        return savedTheme;
+      }
+    } catch {
+      // Ignorar fallback
+    }
+    return 'light'; // Por defecto tema claro profesional
+  });
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    try {
+      localStorage.setItem('electra_plan_theme', theme);
+    } catch {
+      // Ignorar fallback
+    }
+  }, [theme]);
+
+  const handleToggleTheme = useCallback(() => {
+    setTheme((t) => (t === 'light' ? 'dark' : 'light'));
+  }, []);
+
+  // Panel de propiedades lateral contraíble para maximizar el área de dibujo en el plano
+  const [isPropertiesCollapsed, setIsPropertiesCollapsed] = useState<boolean>(false);
 
   // Motor de simulación en tiempo real
   const { simState, updatedSymbols, updatedWires } = useMemo(() => {
@@ -300,8 +333,8 @@ export default function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 font-sans">
-      {/* 1. Barra Superior */}
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#F4F6F8] dark:bg-[#0D161C] text-[#18313B] dark:text-[#F1F5F9] font-sans transition-colors duration-150">
+      {/* 1. Barra Superior Profesional */}
       <Header
         project={project}
         onNewProject={handleNewProject}
@@ -323,6 +356,8 @@ export default function App() {
         saveStatus={saveStatus}
         interfaceMode={interfaceMode}
         onToggleInterfaceMode={handleToggleInterfaceMode}
+        theme={theme}
+        onToggleTheme={handleToggleTheme}
       />
 
       {/* 2. Pestañas de Navegación */}
@@ -350,6 +385,7 @@ export default function App() {
                 activeWireType={activeWireType}
                 onSelectWireType={setActiveWireType}
                 onAddPresetRoom={handleAddPresetRoom}
+                placedSymbols={project.symbols}
               />
             </div>
 
@@ -381,9 +417,9 @@ export default function App() {
               <div className="lg:hidden absolute bottom-11 left-2 right-2 z-20 flex items-center justify-between gap-1.5 pointer-events-auto">
                 <button
                   onClick={() => setIsMobileToolbarOpen(true)}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-slate-900/95 active:bg-slate-800 border border-slate-700/90 text-slate-100 rounded-xl shadow-xl backdrop-blur-md text-xs font-semibold"
+                  className="flex items-center gap-1.5 px-3 py-2 bg-white/95 dark:bg-[#142028]/95 active:bg-[#F1F5F9] dark:active:bg-[#1B2B36] border border-[#DCE4E8] dark:border-[#243542] text-[#18313B] dark:text-[#F1F5F9] rounded-xl shadow-xl backdrop-blur-md text-xs font-semibold"
                 >
-                  <Compass className="w-4 h-4 text-amber-400 shrink-0" />
+                  <Compass className="w-4 h-4 text-[#167D78] dark:text-[#2DD4BF] shrink-0" />
                   <span className="truncate max-w-[120px]">
                     {activeTool === 'place_symbol' && selectedTemplateType
                       ? `Símbolo: ${selectedTemplateType}`
@@ -397,15 +433,15 @@ export default function App() {
 
                 {/* Si la herramienta activa es cable, selector rápido de conductor */}
                 {activeTool === 'wire' && (
-                  <div className="flex items-center gap-1 bg-slate-900/95 border border-slate-700 p-1 rounded-xl shadow-xl backdrop-blur-md">
+                  <div className="flex items-center gap-1 bg-white/95 dark:bg-[#142028]/95 border border-[#DCE4E8] dark:border-[#243542] p-1 rounded-xl shadow-xl backdrop-blur-md">
                     {(['fase', 'neutro', 'tierra', 'retorno'] as ConductorType[]).map((t) => (
                       <button
                         key={t}
                         onClick={() => setActiveWireType(t)}
                         className={`px-1.5 py-1 text-[10px] rounded font-bold uppercase transition-all ${
                           activeWireType === t
-                            ? 'bg-amber-500 text-slate-950 shadow-xs'
-                            : 'text-slate-400 hover:text-white'
+                            ? 'bg-[#167D78] text-white shadow-xs'
+                            : 'text-[#64748B] dark:text-slate-400 hover:text-[#18313B] dark:hover:text-white'
                         }`}
                       >
                         {t === 'tierra' ? 'PE' : t === 'retorno' ? 'Ret' : t.slice(0, 3)}
@@ -418,8 +454,8 @@ export default function App() {
                   onClick={() => setIsMobilePropertiesOpen(true)}
                   className={`flex items-center gap-1.5 px-3 py-2 border rounded-xl shadow-xl backdrop-blur-md text-xs font-semibold transition-all ${
                     selectedElementId
-                      ? 'bg-amber-500 text-slate-950 border-amber-400 ring-2 ring-amber-400/30'
-                      : 'bg-slate-900/95 active:bg-slate-800 border-slate-700/90 text-slate-200'
+                      ? 'bg-[#167D78] text-white border-[#167D78] ring-2 ring-[#167D78]/30'
+                      : 'bg-white/95 dark:bg-[#142028]/95 active:bg-[#F1F5F9] dark:active:bg-[#1B2B36] border-[#DCE4E8] dark:border-[#243542] text-[#18313B] dark:text-[#F1F5F9]'
                   }`}
                 >
                   <Sliders className="w-4 h-4 shrink-0" />
@@ -443,8 +479,12 @@ export default function App() {
               />
             </div>
 
-            {/* Panel lateral derecho de propiedades (Escritorio >= lg) */}
-            <div className="hidden lg:flex h-full shrink-0">
+            {/* Panel lateral derecho de propiedades (Escritorio >= lg) con soporte de contracción/expansión */}
+            <div
+              className={`hidden lg:flex h-full shrink-0 relative transition-all duration-300 ${
+                isPropertiesCollapsed ? 'w-0 overflow-hidden' : 'w-80'
+              }`}
+            >
               <PropertiesPanel
                 project={project}
                 selectedElementType={selectedElementType}
@@ -465,19 +505,34 @@ export default function App() {
                   setSelectedElementType(null);
                 }}
                 onToggleSwitch={handleToggleSwitch}
+                onClose={() => setIsPropertiesCollapsed(true)}
               />
             </div>
+
+            {/* Pestaña flotante para reabrir/expandir panel de propiedades cuando está contraído */}
+            {isPropertiesCollapsed && (
+              <button
+                onClick={() => setIsPropertiesCollapsed(false)}
+                className="hidden lg:flex absolute top-14 right-0 z-30 bg-white dark:bg-[#142028] border-l-2 border-y border-[#167D78] hover:bg-[#E8F5F5] dark:hover:bg-[#1B2B36] text-[#167D78] dark:text-[#2DD4BF] py-3 px-1.5 rounded-l-xl shadow-xl items-center gap-1.5 text-xs font-semibold transition-all group"
+                title="Expandir panel de propiedades"
+              >
+                <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+                <span className="[writing-mode:vertical-rl] rotate-180 text-[10px] tracking-wider font-bold">
+                  PROPIEDADES
+                </span>
+              </button>
+            )}
 
             {/* Drawer Desplegable Móvil de Herramientas CAD */}
             {isMobileToolbarOpen && (
               <div
                 role="dialog"
                 aria-modal="true"
-                className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex flex-col justify-end lg:hidden animate-fade-in"
+                className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex flex-col justify-end lg:hidden animate-fade-in"
                 onClick={() => setIsMobileToolbarOpen(false)}
               >
                 <div
-                  className="bg-slate-900 border-t border-slate-700 rounded-t-2xl max-h-[85vh] h-[80vh] flex flex-col overflow-hidden shadow-2xl"
+                  className="bg-white dark:bg-[#142028] border-t border-[#DCE4E8] dark:border-[#243542] rounded-t-2xl max-h-[85vh] h-[80vh] flex flex-col overflow-hidden shadow-2xl"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Toolbar
@@ -503,6 +558,7 @@ export default function App() {
                       setIsMobileToolbarOpen(false);
                     }}
                     onClose={() => setIsMobileToolbarOpen(false)}
+                    placedSymbols={project.symbols}
                   />
                 </div>
               </div>
@@ -513,11 +569,11 @@ export default function App() {
               <div
                 role="dialog"
                 aria-modal="true"
-                className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex flex-col justify-end lg:hidden animate-fade-in"
+                className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex flex-col justify-end lg:hidden animate-fade-in"
                 onClick={() => setIsMobilePropertiesOpen(false)}
               >
                 <div
-                  className="bg-slate-900 border-t border-slate-700 rounded-t-2xl max-h-[85vh] h-[80vh] flex flex-col overflow-hidden shadow-2xl"
+                  className="bg-white dark:bg-[#142028] border-t border-[#DCE4E8] dark:border-[#243542] rounded-t-2xl max-h-[85vh] h-[80vh] flex flex-col overflow-hidden shadow-2xl"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <PropertiesPanel

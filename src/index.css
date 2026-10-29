@@ -1,9 +1,57 @@
 @import "tailwindcss";
 
+:root {
+  --bg-app: #F4F6F8;
+  --bg-surface: #FFFFFF;
+  --bg-surface-elevated: #F8FAFC;
+  --bg-subtle: #EDF2F5;
+  --color-primary: #167D78;
+  --color-primary-hover: #0F5E5A;
+  --color-primary-active: #0A4542;
+  --color-primary-light: #E8F5F5;
+  --color-primary-border: #B7DFDD;
+  --text-main: #18313B;
+  --text-secondary: #64748B;
+  --text-muted: #8E9FAA;
+  --border-color: #DCE4E8;
+  --border-subtle: #E8EFF2;
+  --color-warning: #D99A32;
+  --color-error: #DC2626;
+  --color-info: #2563EB;
+  --color-success: #167D78;
+  --cad-bg: #F8FAFC;
+  --cad-grid-dot: rgba(100, 116, 139, 0.22);
+}
+
+.dark {
+  --bg-app: #0D161C;
+  --bg-surface: #142028;
+  --bg-surface-elevated: #1B2B36;
+  --bg-subtle: #192732;
+  --color-primary: #167D78;
+  --color-primary-hover: #1CA49E;
+  --color-primary-active: #22BDB6;
+  --color-primary-light: rgba(22, 125, 120, 0.2);
+  --color-primary-border: rgba(28, 164, 158, 0.4);
+  --text-main: #F1F5F9;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+  --border-color: #243542;
+  --border-subtle: #1C2B36;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
+  --color-info: #38BDF8;
+  --color-success: #2DD4BF;
+  --cad-bg: #0B1218;
+  --cad-grid-dot: rgba(148, 163, 184, 0.2);
+}
+
 @layer base {
   html, body {
     overscroll-behavior-y: none;
     -webkit-tap-highlight-color: transparent;
+    background-color: var(--bg-app);
+    color: var(--text-main);
   }
   body {
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
@@ -12,6 +60,23 @@
     font-family: 'JetBrains Mono', ui-monospace, monospace;
   }
 }
+
+/* Helper Utilities */
+.bg-app { background-color: var(--bg-app); }
+.bg-surface { background-color: var(--bg-surface); }
+.bg-surface-elevated { background-color: var(--bg-surface-elevated); }
+.bg-subtle { background-color: var(--bg-subtle); }
+.text-main { color: var(--text-main); }
+.text-secondary { color: var(--text-secondary); }
+.text-muted { color: var(--text-muted); }
+.border-main { border-color: var(--border-color); }
+.border-subtle { border-color: var(--border-subtle); }
+
+.bg-primary { background-color: var(--color-primary); }
+.bg-primary:hover { background-color: var(--color-primary-hover); }
+.text-primary-brand { color: var(--color-primary); }
+.border-primary-brand { border-color: var(--color-primary); }
+.bg-primary-light { background-color: var(--color-primary-light); }
 
 /* Hide scrollbar utility for clean mobile horizontal scroll */
 .scrollbar-none::-webkit-scrollbar {
@@ -24,15 +89,8 @@
 
 /* CAD Grid Pattern */
 .cad-grid-pattern {
-  background-image: radial-gradient(circle, rgba(148, 163, 184, 0.25) 1px, transparent 1px);
+  background-image: radial-gradient(circle, var(--cad-grid-dot) 1px, transparent 1px);
   background-size: 20px 20px;
-}
-
-.cad-grid-lines {
-  background-size: 40px 40px;
-  background-image: 
-    linear-gradient(to right, rgba(148, 163, 184, 0.1) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(148, 163, 184, 0.1) 1px, transparent 1px);
 }
 
 /* Custom scrollbar for technical panels */
@@ -41,14 +99,14 @@
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: var(--bg-subtle);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.4);
+  background: var(--border-color);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.7);
+  background: var(--text-muted);
 }
 
 /* Print Styles */

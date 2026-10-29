@@ -161,7 +161,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   ];
 
   return (
-    <div className="relative no-print bg-slate-900/95 border-b border-slate-800 shrink-0">
+    <div className="relative no-print bg-white dark:bg-[#142028] border-b border-[#DCE4E8] dark:border-[#243542] shrink-0 transition-colors">
       <nav
         ref={containerRef}
         aria-label="Pestañas de la aplicación"
@@ -176,18 +176,20 @@ export const Navigation: React.FC<NavigationProps> = ({
               key={tab.id}
               ref={isActive ? activeTabRef : undefined}
               onClick={() => onTabChange(tab.id)}
-              className={`flex items-center gap-2 px-3 sm:px-3 py-2 sm:py-1.5 text-xs font-medium rounded-lg sm:rounded-md whitespace-nowrap transition-all shrink-0 min-h-[38px] sm:min-h-[32px] ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3 py-1.5 text-xs rounded-lg whitespace-nowrap transition-all shrink-0 min-h-[36px] sm:min-h-[32px] ${
                 isActive
-                  ? 'bg-slate-800 text-amber-400 font-bold shadow-xs border border-slate-700/80 ring-1 ring-amber-400/20'
-                  : 'text-slate-300 hover:text-white active:bg-slate-800/60 hover:bg-slate-800/40'
+                  ? 'bg-[#E8F5F5] dark:bg-[#167D78]/25 text-[#167D78] dark:text-[#2DD4BF] font-bold border border-[#B7DFDD] dark:border-[#167D78]/50 shadow-2xs'
+                  : 'text-[#64748B] dark:text-[#94A3B8] hover:text-[#18313B] dark:hover:text-white hover:bg-[#F4F6F8] dark:hover:bg-[#1B2B36]'
               }`}
             >
-              <Icon className={`w-4 h-4 sm:w-3.5 sm:h-3.5 ${isActive ? 'text-amber-400' : 'text-slate-400'}`} />
+              <Icon className={`w-4 h-4 sm:w-3.5 sm:h-3.5 ${isActive ? 'text-[#167D78] dark:text-[#2DD4BF]' : 'text-[#8E9FAA] dark:text-[#64748B]'}`} />
               <span className="text-xs">{tab.label}</span>
               {tab.badge && (
                 <span
-                  className={`text-[10px] px-1.5 py-0.5 rounded border font-semibold ${
-                    tab.badgeColor || 'text-slate-300 bg-slate-800 border-slate-700'
+                  className={`text-[10px] px-1.5 py-0.2 rounded font-semibold border ${
+                    isActive
+                      ? 'bg-white dark:bg-[#142028] text-[#167D78] dark:text-[#2DD4BF] border-[#B7DFDD] dark:border-[#167D78]/40'
+                      : 'bg-[#F4F6F8] dark:bg-[#1B2B36] text-[#64748B] dark:text-[#94A3B8] border-[#DCE4E8] dark:border-[#243542]'
                   }`}
                 >
                   {tab.badge}

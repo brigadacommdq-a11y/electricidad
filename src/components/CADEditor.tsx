@@ -751,18 +751,18 @@ export const CADEditor: React.FC<CADEditorProps> = ({
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       style={{ touchAction: 'none' }}
-      className="relative flex-1 h-full w-full bg-slate-950 overflow-hidden select-none cursor-crosshair touch-none"
+      className="relative flex-1 h-full w-full bg-[#F8FAFC] dark:bg-[#0B1218] overflow-hidden select-none cursor-crosshair touch-none transition-colors duration-150"
     >
       {/* Selector de Modos de Vista Realista / Conexiones / Esquemática y Estudio 3D */}
       <div className="absolute top-2 sm:top-3 left-2 sm:left-3 z-20 flex flex-wrap items-center gap-1.5 max-w-[85vw] sm:max-w-none">
         {/* Alternador 2D / 3D */}
-        <div className="flex items-center bg-slate-900/95 border border-slate-700/90 rounded-lg p-0.5 shadow-xl backdrop-blur-md">
+        <div className="flex items-center bg-white/95 dark:bg-[#142028]/95 border border-[#DCE4E8] dark:border-[#243542] rounded-lg p-0.5 shadow-xl backdrop-blur-md">
           <button
             onClick={() => setIs3DView(false)}
             className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
               !is3DView
-                ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-[#167D78] text-white font-bold shadow-xs'
+                : 'text-[#64748B] dark:text-slate-400 hover:text-[#18313B] dark:hover:text-white'
             }`}
           >
             <Layers className="w-3.5 h-3.5" />
@@ -772,8 +772,8 @@ export const CADEditor: React.FC<CADEditorProps> = ({
             onClick={() => setIs3DView(true)}
             className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
               is3DView
-                ? 'bg-cyan-500 text-slate-950 font-bold shadow-xs'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-[#0F5E5A] text-white font-bold shadow-xs'
+                : 'text-[#64748B] dark:text-slate-400 hover:text-[#18313B] dark:hover:text-white'
             }`}
           >
             <Box className="w-3.5 h-3.5" />
@@ -783,13 +783,13 @@ export const CADEditor: React.FC<CADEditorProps> = ({
 
         {/* Selector de los 3 Modos de Visualización Requeridos: REALISTA / SÍMBOLO / APRENDER */}
         {!is3DView && (
-          <div className="flex items-center bg-slate-900/95 border border-slate-700/90 rounded-lg p-0.5 shadow-xl backdrop-blur-md">
+          <div className="flex items-center bg-white/95 dark:bg-[#142028]/95 border border-[#DCE4E8] dark:border-[#243542] rounded-lg p-0.5 shadow-xl backdrop-blur-md">
             <button
               onClick={() => setViewMode('realista')}
               className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
                 viewMode === 'realista'
-                  ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                  ? 'bg-[#167D78] text-white font-bold shadow-xs'
+                  : 'text-[#64748B] dark:text-slate-300 hover:text-[#18313B] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
               }`}
               title="Modo Realista: Muestra el aspecto físico real detallado"
             >
@@ -799,8 +799,8 @@ export const CADEditor: React.FC<CADEditorProps> = ({
               onClick={() => setViewMode('simbolo')}
               className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
                 viewMode === 'simbolo' || viewMode === 'esquematica'
-                  ? 'bg-cyan-500 text-slate-950 font-bold shadow-xs'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                  ? 'bg-[#0284C7] text-white font-bold shadow-xs'
+                  : 'text-[#64748B] dark:text-slate-300 hover:text-[#18313B] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
               }`}
               title="Modo Símbolo: Muestra el símbolo unifilar/multifilar normalizado IRAM"
             >
@@ -810,8 +810,8 @@ export const CADEditor: React.FC<CADEditorProps> = ({
               onClick={() => setViewMode('aprender')}
               className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
                 viewMode === 'aprender'
-                  ? 'bg-emerald-500 text-slate-950 font-bold shadow-xs'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                  ? 'bg-[#059669] text-white font-bold shadow-xs'
+                  : 'text-[#64748B] dark:text-slate-300 hover:text-[#18313B] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
               }`}
               title="Modo Aprender: Muestra modelo físico y símbolo esquemático conectados lado a lado"
             >
@@ -822,7 +822,7 @@ export const CADEditor: React.FC<CADEditorProps> = ({
 
         {/* Control de Tamaño y Visibilidad de Etiquetas Permanentes */}
         {!is3DView && (
-          <div className="flex items-center bg-slate-900/95 border border-slate-700/90 rounded-lg p-0.5 shadow-xl backdrop-blur-md">
+          <div className="flex items-center bg-white/95 dark:bg-[#142028]/95 border border-[#DCE4E8] dark:border-[#243542] rounded-lg p-0.5 shadow-xl backdrop-blur-md">
             <button
               onClick={() => {
                 const nextSize =
@@ -835,12 +835,12 @@ export const CADEditor: React.FC<CADEditorProps> = ({
                     : 'mediano';
                 setLabelSize(nextSize);
               }}
-              className="px-2 py-1 text-xs font-medium rounded-md text-slate-300 hover:text-white hover:bg-slate-800/70 transition-all flex items-center gap-1.5"
+              className="px-2 py-1 text-xs font-medium rounded-md text-[#18313B] dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/70 transition-all flex items-center gap-1.5"
               title="Cambiar tamaño o visibilidad de etiquetas encima de cada componente"
             >
-              <Tag className="w-3.5 h-3.5 text-amber-400" />
-              <span className="capitalize">
-                Etiquetas: <strong className="text-amber-300">{labelSize}</strong>
+              <Tag className="w-3.5 h-3.5 text-[#167D78] dark:text-[#2DD4BF]" />
+              <span className="capitalize text-xs">
+                Etiquetas: <strong className="text-[#167D78] dark:text-[#2DD4BF]">{labelSize}</strong>
               </span>
             </button>
           </div>
@@ -848,19 +848,19 @@ export const CADEditor: React.FC<CADEditorProps> = ({
 
         {/* Control de Modo de Trazado (Ortogonal a 90° vs Bézier Curvo) */}
         {!is3DView && (
-          <div className="flex items-center bg-slate-900/95 border border-slate-700/90 rounded-lg p-0.5 shadow-xl backdrop-blur-md">
+          <div className="flex items-center bg-white/95 dark:bg-[#142028]/95 border border-[#DCE4E8] dark:border-[#243542] rounded-lg p-0.5 shadow-xl backdrop-blur-md">
             <button
               onClick={() => setRoutingMode((m) => (m === 'orthogonal' ? 'bezier' : 'orthogonal'))}
               className={`px-2 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
                 routingMode === 'orthogonal'
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                  : 'text-slate-300 hover:text-white'
+                  ? 'bg-[#167D78]/15 text-[#167D78] dark:text-[#2DD4BF] border border-[#167D78]/30'
+                  : 'text-[#64748B] dark:text-slate-300 hover:text-[#18313B] dark:hover:text-white'
               }`}
               title="Alternar entre trazado ortogonal de canalizaciones (Manhattan 90°) y trazo curvo"
             >
-              <GitBranch className="w-3.5 h-3.5 text-amber-400" />
+              <GitBranch className="w-3.5 h-3.5 text-[#167D78] dark:text-[#2DD4BF]" />
               <span className="hidden sm:inline">Trazado:</span>
-              <strong className="text-amber-300 capitalize">{routingMode === 'orthogonal' ? 'Ortogonal' : 'Curvo'}</strong>
+              <strong className="text-[#167D78] dark:text-[#2DD4BF] capitalize">{routingMode === 'orthogonal' ? 'Ortogonal' : 'Curvo'}</strong>
             </button>
           </div>
         )}
@@ -869,7 +869,7 @@ export const CADEditor: React.FC<CADEditorProps> = ({
         {!is3DView && selectedElementType === 'wire' && selectedElementId && (
           <button
             onClick={() => setIsConductorModalOpen(true)}
-            className="px-2.5 py-1 bg-amber-500 text-slate-950 hover:bg-amber-400 font-bold text-xs rounded-lg shadow-xl backdrop-blur-md flex items-center gap-1.5 transition-all animate-pulse"
+            className="px-2.5 py-1 bg-[#167D78] text-white hover:bg-[#0F5E5A] font-bold text-xs rounded-lg shadow-xl backdrop-blur-md flex items-center gap-1.5 transition-all"
             title="Abrir ficha técnica de dimensionamiento y normas AEA del conductor seleccionado"
           >
             <Zap className="w-3.5 h-3.5" />
@@ -883,10 +883,10 @@ export const CADEditor: React.FC<CADEditorProps> = ({
             const selectedSym = project.symbols.find((s) => s.id === selectedElementId);
             setLearningType(selectedSym?.type || 'luminaria');
           }}
-          className="px-2.5 py-1 bg-slate-900/95 hover:bg-slate-800 border border-slate-700/90 text-amber-300 hover:text-amber-200 text-xs font-semibold rounded-lg shadow-xl backdrop-blur-md flex items-center gap-1.5 transition-all"
+          className="px-2.5 py-1 bg-white/95 dark:bg-[#142028]/95 hover:bg-[#F8FAFC] dark:hover:bg-[#1B2B36] border border-[#DCE4E8] dark:border-[#243542] text-[#167D78] dark:text-[#2DD4BF] text-xs font-semibold rounded-lg shadow-xl backdrop-blur-md flex items-center gap-1.5 transition-all"
           title="Ver enciclopedia técnica de normas y especificaciones"
         >
-          <BookOpen className="w-3.5 h-3.5 text-amber-400" />
+          <BookOpen className="w-3.5 h-3.5 text-[#167D78] dark:text-[#2DD4BF]" />
           <span className="hidden sm:inline">Enciclopedia</span>
         </button>
       </div>
@@ -1009,33 +1009,33 @@ export const CADEditor: React.FC<CADEditorProps> = ({
       ) : (
         <>
           {/* 1. Barra flotante de controles CAD para Escritorio y Tablet (sm y superior) */}
-          <div className="hidden sm:flex absolute top-3 right-3 z-20 items-center gap-1 bg-slate-900/90 border border-slate-800 p-1 rounded-lg shadow-lg backdrop-blur-xs text-xs">
+          <div className="hidden sm:flex absolute top-3 right-3 z-20 items-center gap-1 bg-white/95 dark:bg-[#142028]/95 border border-[#DCE4E8] dark:border-[#243542] text-[#18313B] dark:text-[#F1F5F9] p-1 rounded-lg shadow-lg backdrop-blur-md text-xs">
             <button
               onClick={() => setIsPanMode(!isPanMode)}
               title={isPanMode ? 'Desactivar modo mover (volver a edición)' : 'Activar modo mover plano (Pan)'}
               className={`p-1.5 rounded transition-colors ${
-                isPanMode ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                isPanMode ? 'bg-[#167D78] text-white font-bold' : 'text-[#64748B] dark:text-slate-300 hover:text-[#18313B] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
               }`}
             >
               <Hand className="w-4 h-4" />
             </button>
 
-            <div className="h-4 w-px bg-slate-800 mx-0.5" />
+            <div className="h-4 w-px bg-[#DCE4E8] dark:bg-[#243542] mx-0.5" />
 
             <button
               onClick={() => setZoom((z) => Math.min(2.5, z + 0.15))}
               title="Acercar vista (Zoom +)"
-              className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded transition-colors"
+              className="p-1.5 text-[#64748B] dark:text-slate-300 hover:text-[#18313B] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
             >
               <ZoomIn className="w-4 h-4" />
             </button>
-            <span className="text-[11px] font-mono text-slate-400 px-1">
+            <span className="text-[11px] font-mono text-[#64748B] dark:text-slate-400 px-1 font-semibold">
               {Math.round(zoom * 100)}%
             </span>
             <button
               onClick={() => setZoom((z) => Math.max(0.4, z - 0.15))}
               title="Alejar vista (Zoom -)"
-              className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded transition-colors"
+              className="p-1.5 text-[#64748B] dark:text-slate-300 hover:text-[#18313B] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
             >
               <ZoomOut className="w-4 h-4" />
             </button>
@@ -1045,18 +1045,18 @@ export const CADEditor: React.FC<CADEditorProps> = ({
                 setPan({ x: 40, y: 30 });
               }}
               title="Centrar y ajustar plano"
-              className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded transition-colors"
+              className="p-1.5 text-[#64748B] dark:text-slate-300 hover:text-[#18313B] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
             >
               <Maximize2 className="w-4 h-4" />
             </button>
 
-            <div className="h-4 w-px bg-slate-800 mx-0.5" />
+            <div className="h-4 w-px bg-[#DCE4E8] dark:bg-[#243542] mx-0.5" />
 
             <button
               onClick={() => setShowGrid(!showGrid)}
               title="Activar / Desactivar cuadrícula CAD"
               className={`p-1.5 rounded transition-colors ${
-                showGrid ? 'bg-amber-500/20 text-amber-300' : 'text-slate-400 hover:text-white'
+                showGrid ? 'bg-[#167D78]/15 dark:bg-[#167D78]/30 text-[#167D78] dark:text-[#2DD4BF] font-semibold' : 'text-[#64748B] dark:text-slate-400 hover:text-[#18313B] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
               }`}
             >
               <Grid className="w-4 h-4" />
@@ -1066,7 +1066,7 @@ export const CADEditor: React.FC<CADEditorProps> = ({
               onClick={() => setSnapToGrid(!snapToGrid)}
               title="Ajuste magnético a la cuadrícula (Snap)"
               className={`p-1.5 rounded transition-colors ${
-                snapToGrid ? 'bg-amber-500/20 text-amber-300' : 'text-slate-400 hover:text-white'
+                snapToGrid ? 'bg-[#167D78]/15 dark:bg-[#167D78]/30 text-[#167D78] dark:text-[#2DD4BF] font-semibold' : 'text-[#64748B] dark:text-slate-400 hover:text-[#18313B] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
               }`}
             >
               <Magnet className="w-4 h-4" />
@@ -1076,7 +1076,7 @@ export const CADEditor: React.FC<CADEditorProps> = ({
               onClick={() => setShowDimensions(!showDimensions)}
               title="Mostrar / Ocultar cotas y medidas en metros"
               className={`p-1.5 rounded transition-colors ${
-                showDimensions ? 'bg-amber-500/20 text-amber-300' : 'text-slate-400 hover:text-white'
+                showDimensions ? 'bg-[#167D78]/15 dark:bg-[#167D78]/30 text-[#167D78] dark:text-[#2DD4BF] font-semibold' : 'text-[#64748B] dark:text-slate-400 hover:text-[#18313B] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
               }`}
             >
               <Ruler className="w-4 h-4" />
@@ -1084,12 +1084,12 @@ export const CADEditor: React.FC<CADEditorProps> = ({
 
         {selectedElementId && (
           <>
-            <div className="h-4 w-px bg-slate-800 mx-0.5" />
+            <div className="h-4 w-px bg-[#DCE4E8] dark:bg-[#243542] mx-0.5" />
             {selectedElementType === 'symbol' && (
               <button
                 onClick={handleRotateSelected}
                 title="Rotar símbolo 90° (R)"
-                className="p-1.5 text-amber-400 hover:text-amber-300 hover:bg-slate-800 rounded transition-colors"
+                className="p-1.5 text-[#167D78] dark:text-[#2DD4BF] hover:bg-[#E8F5F5] dark:hover:bg-slate-800 rounded transition-colors"
               >
                 <RotateCw className="w-4 h-4" />
               </button>
@@ -1097,7 +1097,7 @@ export const CADEditor: React.FC<CADEditorProps> = ({
             <button
               onClick={handleDeleteSelected}
               title="Eliminar elemento seleccionado (Supr)"
-              className="p-1.5 text-red-400 hover:text-red-300 hover:bg-slate-800 rounded transition-colors"
+              className="p-1.5 text-[#DC2626] hover:bg-red-50 dark:hover:bg-red-950/40 rounded transition-colors"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -1108,12 +1108,12 @@ export const CADEditor: React.FC<CADEditorProps> = ({
       {/* 2. Dock Flotante Táctil para Móviles (Android / iOS en pantallas pequeñas) */}
       <div className="flex sm:hidden absolute top-2 right-2 z-20 flex-col items-end gap-1.5">
         {/* Grupo de zoom y navegación táctil */}
-        <div className="flex flex-col bg-slate-900/95 border border-slate-700/80 rounded-xl shadow-xl backdrop-blur-md overflow-hidden">
+        <div className="flex flex-col bg-white/95 dark:bg-[#142028]/95 border border-[#DCE4E8] dark:border-[#243542] rounded-xl shadow-xl backdrop-blur-md overflow-hidden">
           <button
             onClick={() => setIsPanMode(!isPanMode)}
             title="Alternar entre mover plano y editar"
-            className={`p-2.5 flex items-center justify-center transition-colors border-b border-slate-800 ${
-              isPanMode ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-300 active:bg-slate-800'
+            className={`p-2.5 flex items-center justify-center transition-colors border-b border-[#DCE4E8] dark:border-[#243542] ${
+              isPanMode ? 'bg-[#167D78] text-white font-bold' : 'text-[#18313B] dark:text-slate-300 active:bg-slate-100 dark:active:bg-slate-800'
             }`}
           >
             <Hand className="w-4 h-4" />
@@ -1121,17 +1121,17 @@ export const CADEditor: React.FC<CADEditorProps> = ({
           <button
             onClick={() => setZoom((z) => Math.min(2.5, z + 0.2))}
             title="Acercar vista"
-            className="p-2.5 text-slate-200 active:bg-slate-800 active:text-white border-b border-slate-800 flex items-center justify-center"
+            className="p-2.5 text-[#18313B] dark:text-slate-200 active:bg-slate-100 dark:active:bg-slate-800 border-b border-[#DCE4E8] dark:border-[#243542] flex items-center justify-center"
           >
             <ZoomIn className="w-4 h-4" />
           </button>
-          <div className="text-[9px] font-mono font-bold text-center py-1 text-slate-400 border-b border-slate-800">
+          <div className="text-[9px] font-mono font-bold text-center py-1 text-[#64748B] dark:text-slate-400 border-b border-[#DCE4E8] dark:border-[#243542]">
             {Math.round(zoom * 100)}%
           </div>
           <button
             onClick={() => setZoom((z) => Math.max(0.4, z - 0.2))}
             title="Alejar vista"
-            className="p-2.5 text-slate-200 active:bg-slate-800 active:text-white border-b border-slate-800 flex items-center justify-center"
+            className="p-2.5 text-[#18313B] dark:text-slate-200 active:bg-slate-100 dark:active:bg-slate-800 border-b border-[#DCE4E8] dark:border-[#243542] flex items-center justify-center"
           >
             <ZoomOut className="w-4 h-4" />
           </button>
@@ -1141,7 +1141,7 @@ export const CADEditor: React.FC<CADEditorProps> = ({
               setPan({ x: 40, y: 30 });
             }}
             title="Centrar plano"
-            className="p-2.5 text-slate-200 active:bg-slate-800 active:text-white flex items-center justify-center"
+            className="p-2.5 text-[#18313B] dark:text-slate-200 active:bg-slate-100 dark:active:bg-slate-800 flex items-center justify-center"
           >
             <Maximize2 className="w-4 h-4" />
           </button>
@@ -1149,12 +1149,12 @@ export const CADEditor: React.FC<CADEditorProps> = ({
 
         {/* Acciones si hay elemento seleccionado en móvil */}
         {selectedElementId && (
-          <div className="flex flex-col bg-slate-900/95 border border-slate-700/80 rounded-xl shadow-xl backdrop-blur-md overflow-hidden">
+          <div className="flex flex-col bg-white/95 dark:bg-[#142028]/95 border border-[#DCE4E8] dark:border-[#243542] rounded-xl shadow-xl backdrop-blur-md overflow-hidden">
             {selectedElementType === 'symbol' && (
               <button
                 onClick={handleRotateSelected}
                 title="Rotar símbolo"
-                className="p-2.5 text-amber-400 active:bg-slate-800 border-b border-slate-800 flex items-center justify-center"
+                className="p-2.5 text-[#167D78] dark:text-[#2DD4BF] active:bg-slate-100 dark:active:bg-slate-800 border-b border-[#DCE4E8] dark:border-[#243542] flex items-center justify-center"
               >
                 <RotateCw className="w-4 h-4" />
               </button>
@@ -1162,7 +1162,7 @@ export const CADEditor: React.FC<CADEditorProps> = ({
             <button
               onClick={handleDeleteSelected}
               title="Eliminar elemento"
-              className="p-2.5 text-red-400 active:bg-slate-800 flex items-center justify-center"
+              className="p-2.5 text-[#DC2626] active:bg-red-50 dark:active:bg-red-950/40 flex items-center justify-center"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -1172,7 +1172,7 @@ export const CADEditor: React.FC<CADEditorProps> = ({
 
       {/* Cartel flotante en móvil cuando Modo Mover está activo */}
       {isPanMode && (
-        <div className="sm:hidden absolute top-2 left-2 z-20 bg-amber-500 text-slate-950 font-bold text-[11px] px-2.5 py-1.5 rounded-lg shadow-lg flex items-center gap-1.5 animate-pulse">
+        <div className="sm:hidden absolute top-2 left-2 z-20 bg-[#167D78] text-white font-bold text-[11px] px-2.5 py-1.5 rounded-lg shadow-lg flex items-center gap-1.5 animate-pulse">
           <Hand className="w-3.5 h-3.5 shrink-0" />
           <span>Modo Mover: Desliza 1 dedo</span>
         </div>
@@ -1224,7 +1224,7 @@ export const CADEditor: React.FC<CADEditorProps> = ({
               cx={(gridSize * zoom) / 2}
               cy={(gridSize * zoom) / 2}
               r={1}
-              fill="rgba(148, 163, 184, 0.25)"
+              fill="var(--cad-grid-dots, rgba(148, 163, 184, 0.45))"
             />
           </pattern>
 

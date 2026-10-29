@@ -136,19 +136,19 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   const conductorSpec = selectedWire ? generateConductorSpec(selectedWire, project) : null;
 
   return (
-    <aside className="no-print w-full lg:w-72 bg-slate-900 border-l border-slate-800 flex flex-col h-full text-slate-200 select-none text-xs">
+    <aside className="no-print w-full bg-white dark:bg-[#142028] border-l border-[#DCE4E8] dark:border-[#243542] flex flex-col h-full text-[#18313B] dark:text-[#F1F5F9] select-none text-xs transition-colors duration-150">
       {/* Cabecera del panel */}
-      <div className="p-3 border-b border-slate-800 flex items-center justify-between bg-slate-900/80">
-        <div className="flex items-center gap-2 text-slate-200 font-semibold text-sm">
-          <Sliders className="w-4 h-4 text-amber-400" />
-          <span>Propiedades</span>
+      <div className="p-3 border-b border-[#DCE4E8] dark:border-[#243542] flex items-center justify-between bg-white dark:bg-[#142028]">
+        <div className="flex items-center gap-2 text-[#18313B] dark:text-slate-100 font-semibold text-sm">
+          <Sliders className="w-4 h-4 text-[#167D78] dark:text-[#2DD4BF]" />
+          <span>Propiedades Técnicas</span>
         </div>
         <div className="flex items-center gap-1.5">
           {selectedElementId && (
             <button
               onClick={onDeleteSelected}
               title="Eliminar elemento"
-              className="p-1.5 text-red-400 hover:text-red-300 hover:bg-slate-800 rounded transition-colors"
+              className="p-1.5 text-red-500 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/40 rounded transition-colors"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -156,8 +156,9 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           {onClose && (
             <button
               onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-full transition-colors"
+              className="p-1.5 text-[#64748B] dark:text-slate-400 hover:text-[#18313B] dark:hover:text-white bg-[#F1F5F9] dark:bg-[#1B2B36] rounded-md transition-colors"
               aria-label="Cerrar propiedades"
+              title="Contraer panel"
             >
               <X className="w-4 h-4" />
             </button>
@@ -170,42 +171,42 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
         {selectedSymbol && (
           <div className="space-y-3">
             <div>
-              <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider">
+              <span className="text-[10px] text-[#167D78] dark:text-[#2DD4BF] font-bold uppercase tracking-wider">
                 Componente Eléctrico
               </span>
-              <h3 className="text-sm font-bold text-white mt-0.5">{selectedSymbol.name}</h3>
-              <p className="text-[10px] text-slate-400 font-mono">ID: {selectedSymbol.id}</p>
+              <h3 className="text-sm font-bold text-[#18313B] dark:text-white mt-0.5">{selectedSymbol.name}</h3>
+              <p className="text-[10px] text-[#64748B] dark:text-slate-400 font-mono">ID: {selectedSymbol.id}</p>
             </div>
 
             {/* Rotación y Giros Rápidos */}
-            <div className="space-y-2 bg-slate-950/60 p-2.5 rounded border border-slate-800">
-              <span className="text-[10px] text-slate-300 font-semibold block">Rotación & Inversión</span>
+            <div className="space-y-2 bg-[#F8FAFC] dark:bg-[#1B2B36] p-2.5 rounded-lg border border-[#DCE4E8] dark:border-[#243542]">
+              <span className="text-[10px] text-[#18313B] dark:text-slate-300 font-semibold block">Rotación & Inversión</span>
               <div className="flex items-center justify-between gap-1">
                 <button
                   type="button"
                   onClick={() => handleRotate(-15)}
-                  className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] font-mono"
+                  className="px-2 py-1 bg-white dark:bg-[#142028] hover:bg-[#F1F5F9] dark:hover:bg-slate-700 text-[#18313B] dark:text-slate-300 rounded border border-[#DCE4E8] dark:border-[#243542] text-[11px] font-mono"
                 >
                   -15°
                 </button>
                 <button
                   type="button"
                   onClick={() => handleRotate(15)}
-                  className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] font-mono"
+                  className="px-2 py-1 bg-white dark:bg-[#142028] hover:bg-[#F1F5F9] dark:hover:bg-slate-700 text-[#18313B] dark:text-slate-300 rounded border border-[#DCE4E8] dark:border-[#243542] text-[11px] font-mono"
                 >
                   +15°
                 </button>
                 <button
                   type="button"
                   onClick={() => handleRotate(45)}
-                  className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded text-[11px] font-mono font-bold"
+                  className="px-2 py-1 bg-white dark:bg-[#142028] hover:bg-[#F1F5F9] dark:hover:bg-slate-700 text-[#167D78] dark:text-[#2DD4BF] rounded border border-[#DCE4E8] dark:border-[#243542] text-[11px] font-mono font-bold"
                 >
                   +45°
                 </button>
                 <button
                   type="button"
                   onClick={() => handleRotate(90)}
-                  className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded text-[11px] font-mono font-bold"
+                  className="px-2 py-1 bg-white dark:bg-[#142028] hover:bg-[#F1F5F9] dark:hover:bg-slate-700 text-[#167D78] dark:text-[#2DD4BF] rounded border border-[#DCE4E8] dark:border-[#243542] text-[11px] font-mono font-bold"
                 >
                   +90°
                 </button>
@@ -217,7 +218,9 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   type="button"
                   onClick={() => handleFlip('H')}
                   className={`py-1 px-2 rounded border text-[11px] flex items-center justify-center gap-1.5 transition-colors ${
-                    selectedSymbol.flipH ? 'bg-amber-500/20 border-amber-500 text-amber-300' : 'bg-slate-900 border-slate-800 text-slate-300'
+                    selectedSymbol.flipH
+                      ? 'bg-[#167D78]/15 border-[#167D78] text-[#167D78] dark:text-[#2DD4BF] font-semibold'
+                      : 'bg-white dark:bg-[#142028] border-[#DCE4E8] dark:border-[#243542] text-[#18313B] dark:text-slate-300'
                   }`}
                 >
                   <FlipHorizontal className="w-3.5 h-3.5" />
@@ -227,7 +230,9 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   type="button"
                   onClick={() => handleFlip('V')}
                   className={`py-1 px-2 rounded border text-[11px] flex items-center justify-center gap-1.5 transition-colors ${
-                    selectedSymbol.flipV ? 'bg-amber-500/20 border-amber-500 text-amber-300' : 'bg-slate-900 border-slate-800 text-slate-300'
+                    selectedSymbol.flipV
+                      ? 'bg-[#167D78]/15 border-[#167D78] text-[#167D78] dark:text-[#2DD4BF] font-semibold'
+                      : 'bg-white dark:bg-[#142028] border-[#DCE4E8] dark:border-[#243542] text-[#18313B] dark:text-slate-300'
                   }`}
                 >
                   <FlipVertical className="w-3.5 h-3.5" />
@@ -237,9 +242,9 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
             </div>
 
             {/* Etiqueta y Nombre */}
-            <div className="space-y-2 bg-slate-950/60 p-2.5 rounded border border-slate-800">
+            <div className="space-y-2 bg-[#F8FAFC] dark:bg-[#1B2B36] p-2.5 rounded-lg border border-[#DCE4E8] dark:border-[#243542]">
               <div>
-                <label className="text-[10px] text-slate-400 block mb-0.5">Etiqueta técnica (Label)</label>
+                <label className="text-[10px] text-[#64748B] dark:text-slate-400 block mb-0.5 font-medium">Etiqueta técnica (Label)</label>
                 <input
                   type="text"
                   value={selectedSymbol.label}
@@ -252,12 +257,12 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                       ),
                     }));
                   }}
-                  className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-100 font-mono text-xs focus:border-amber-500 focus:outline-hidden"
+                  className="w-full bg-white dark:bg-[#0D161C] border border-[#DCE4E8] dark:border-[#243542] rounded px-2 py-1 text-[#18313B] dark:text-[#F1F5F9] font-mono text-xs focus:border-[#167D78] focus:ring-1 focus:ring-[#167D78] focus:outline-hidden"
                 />
               </div>
 
               <div>
-                <label className="text-[10px] text-slate-400 block mb-0.5">Nombre descriptivo</label>
+                <label className="text-[10px] text-[#64748B] dark:text-slate-400 block mb-0.5 font-medium">Nombre descriptivo</label>
                 <input
                   type="text"
                   value={selectedSymbol.name}
@@ -270,13 +275,13 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                       ),
                     }));
                   }}
-                  className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-100 text-xs focus:border-amber-500 focus:outline-hidden"
+                  className="w-full bg-white dark:bg-[#0D161C] border border-[#DCE4E8] dark:border-[#243542] rounded px-2 py-1 text-[#18313B] dark:text-[#F1F5F9] text-xs focus:border-[#167D78] focus:ring-1 focus:ring-[#167D78] focus:outline-hidden"
                 />
               </div>
 
               {/* Asignación de Circuito */}
               <div>
-                <label className="text-[10px] text-slate-400 block mb-0.5">Circuito asignado</label>
+                <label className="text-[10px] text-[#64748B] dark:text-slate-400 block mb-0.5 font-medium">Circuito asignado</label>
                 <select
                   value={selectedSymbol.circuitId || 'C1'}
                   onChange={(e) => {
@@ -288,7 +293,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                       ),
                     }));
                   }}
-                  className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-amber-400 font-semibold text-xs focus:border-amber-500 focus:outline-hidden"
+                  className="w-full bg-white dark:bg-[#0D161C] border border-[#DCE4E8] dark:border-[#243542] rounded px-2 py-1 text-[#167D78] dark:text-[#2DD4BF] font-semibold text-xs focus:border-[#167D78] focus:ring-1 focus:ring-[#167D78] focus:outline-hidden"
                 >
                   {project.circuits.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -300,12 +305,12 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
             </div>
 
             {/* Parámetros Eléctricos y de Carga */}
-            <div className="space-y-2 bg-slate-950/60 p-2.5 rounded border border-slate-800">
-              <span className="text-[10px] text-slate-300 font-semibold block">Parámetros Eléctricos</span>
+            <div className="space-y-2 bg-[#F8FAFC] dark:bg-[#1B2B36] p-2.5 rounded-lg border border-[#DCE4E8] dark:border-[#243542]">
+              <span className="text-[10px] text-[#18313B] dark:text-slate-300 font-semibold block">Parámetros Eléctricos</span>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] text-slate-400 block mb-0.5">Potencia (W)</label>
+                  <label className="text-[10px] text-[#64748B] dark:text-slate-400 block mb-0.5 font-medium">Potencia (W)</label>
                   <input
                     type="number"
                     min="0"
@@ -320,12 +325,12 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                         ),
                       }));
                     }}
-                    className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-amber-300 font-mono text-xs focus:border-amber-500 focus:outline-hidden"
+                    className="w-full bg-white dark:bg-[#0D161C] border border-[#DCE4E8] dark:border-[#243542] rounded px-2 py-1 text-[#167D78] dark:text-[#2DD4BF] font-mono text-xs focus:border-[#167D78] focus:ring-1 focus:ring-[#167D78] focus:outline-hidden"
                   />
                 </div>
 
                 <div>
-                  <label className="text-[10px] text-slate-400 block mb-0.5">Tensión (V)</label>
+                  <label className="text-[10px] text-[#64748B] dark:text-slate-400 block mb-0.5 font-medium">Tensión (V)</label>
                   <select
                     value={selectedSymbol.voltage || 220}
                     onChange={(e) => {
@@ -337,7 +342,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                         ),
                       }));
                     }}
-                    className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 font-mono text-xs focus:border-amber-500 focus:outline-hidden"
+                    className="w-full bg-white dark:bg-[#0D161C] border border-[#DCE4E8] dark:border-[#243542] rounded px-2 py-1 text-[#18313B] dark:text-slate-200 font-mono text-xs focus:border-[#167D78] focus:ring-1 focus:ring-[#167D78] focus:outline-hidden"
                   >
                     <option value={220}>220 V (Monofásica)</option>
                     <option value={380}>380 V (Trifásica)</option>
@@ -879,38 +884,42 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
         {/* Sin Selección */}
         {!selectedElementId && (
           <div className="space-y-3">
-            <div className="flex items-center gap-2 text-slate-300">
-              <Info className="w-4 h-4 text-slate-400" />
-              <span className="font-semibold text-xs">Resumen del Proyecto</span>
+            <div className="flex items-center gap-2 text-[#18313B] dark:text-slate-300">
+              <Info className="w-4 h-4 text-[#167D78] dark:text-[#2DD4BF]" />
+              <span className="font-bold text-xs">Resumen de la Instalación</span>
             </div>
 
-            <div className="space-y-2 bg-slate-950/60 p-2.5 rounded border border-slate-800">
-              <div className="flex justify-between py-1 border-b border-slate-800/80">
-                <span className="text-slate-400">Bocas eléctricas:</span>
-                <span className="font-mono font-semibold text-white">{project.symbols.length}</span>
+            <div className="space-y-2 bg-[#F8FAFC] dark:bg-[#1B2B36] p-3 rounded-lg border border-[#DCE4E8] dark:border-[#243542]">
+              <div className="flex justify-between py-1.5 border-b border-[#DCE4E8] dark:border-[#243542]">
+                <span className="text-[#64748B] dark:text-slate-400">Bocas eléctricas:</span>
+                <span className="font-mono font-bold text-[#18313B] dark:text-white">{project.symbols.length}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-800/80">
-                <span className="text-slate-400">Conductores/Cables:</span>
-                <span className="font-mono font-semibold text-white">{project.wires.length}</span>
+              <div className="flex justify-between py-1.5 border-b border-[#DCE4E8] dark:border-[#243542]">
+                <span className="text-[#64748B] dark:text-slate-400">Conductores/Tramos:</span>
+                <span className="font-mono font-bold text-[#18313B] dark:text-white">{project.wires.length}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-800/80">
-                <span className="text-slate-400">Ambientes:</span>
-                <span className="font-mono font-semibold text-white">{project.rooms.length}</span>
+              <div className="flex justify-between py-1.5 border-b border-[#DCE4E8] dark:border-[#243542]">
+                <span className="text-[#64748B] dark:text-slate-400">Ambientes de vivienda:</span>
+                <span className="font-mono font-bold text-[#18313B] dark:text-white">{project.rooms.length}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-800/80">
-                <span className="text-slate-400">Elementos Arquitectónicos:</span>
-                <span className="font-mono font-semibold text-white">{project.architecturalElements.length}</span>
+              <div className="flex justify-between py-1.5 border-b border-[#DCE4E8] dark:border-[#243542]">
+                <span className="text-[#64748B] dark:text-slate-400">Paredes / Aberturas:</span>
+                <span className="font-mono font-bold text-[#18313B] dark:text-white">{project.architecturalElements.length}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-800/80">
-                <span className="text-slate-400">Circuitos:</span>
-                <span className="font-mono font-semibold text-amber-400">{project.circuits.length}</span>
+              <div className="flex justify-between py-1.5 border-b border-[#DCE4E8] dark:border-[#243542]">
+                <span className="text-[#64748B] dark:text-slate-400">Circuitos definidos:</span>
+                <span className="font-mono font-bold text-[#167D78] dark:text-[#2DD4BF]">{project.circuits.length}</span>
               </div>
-              <div className="flex justify-between py-1">
-                <span className="text-slate-400">Potencia Conectada:</span>
-                <span className="font-mono font-semibold text-emerald-400">
+              <div className="flex justify-between py-1.5">
+                <span className="text-[#64748B] dark:text-slate-400">Potencia Conectada Total:</span>
+                <span className="font-mono font-bold text-[#167D78] dark:text-[#2DD4BF]">
                   {project.symbols.reduce((a, s) => a + (s.powerWatts || 0), 0)} W
                 </span>
               </div>
+            </div>
+
+            <div className="p-2.5 rounded-lg bg-[#E8F5F5] dark:bg-[#167D78]/20 border border-[#167D78]/30 text-[#167D78] dark:text-[#2DD4BF] text-[11px] leading-relaxed">
+              💡 <em>Selecciona cualquier componente, cable o ambiente en el plano para editar sus parámetros técnicos en tiempo real.</em>
             </div>
           </div>
         )}
