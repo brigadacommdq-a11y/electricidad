@@ -46,8 +46,6 @@ interface HeaderProps {
   onShowHelp: () => void;
   isSimulating: boolean;
   saveStatus: string;
-  interfaceMode: 'aprendizaje' | 'profesional';
-  onToggleInterfaceMode: () => void;
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
 }
@@ -71,8 +69,6 @@ export const Header: React.FC<HeaderProps> = ({
   onShowHelp,
   isSimulating,
   saveStatus,
-  interfaceMode,
-  onToggleInterfaceMode,
   theme,
   onToggleTheme,
 }) => {
@@ -106,20 +102,6 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
             </div>
           </div>
-
-          {/* Selector de Modo: Principiante / Aprendizaje vs Profesional */}
-          <button
-            onClick={onToggleInterfaceMode}
-            title={interfaceMode === 'aprendizaje' ? 'Cambiar a Modo Profesional' : 'Cambiar a Modo Principiante'}
-            className={`hidden xl:flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold rounded-full transition-all border shadow-xs ml-1 ${
-              interfaceMode === 'aprendizaje'
-                ? 'bg-[#E8F5F5] dark:bg-[#167D78]/20 text-[#167D78] dark:text-[#2DD4BF] border-[#B7DFDD] dark:border-[#167D78]/40 hover:bg-[#D4ECEB]'
-                : 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-500/30 hover:bg-amber-500/20'
-            }`}
-          >
-            <GraduationCap className="w-3.5 h-3.5 text-current" />
-            <span>{interfaceMode === 'aprendizaje' ? 'Modo Principiante' : 'Modo Profesional'}</span>
-          </button>
         </div>
 
         {/* Acciones para Móvil (< md) */}
@@ -331,25 +313,43 @@ export const Header: React.FC<HeaderProps> = ({
 
           <div className="h-4 w-px bg-[#DCE4E8] dark:bg-[#243542] mx-0.5" />
 
-          {/* Selector de Tema Claro / Oscuro */}
-          <button
-            onClick={onToggleTheme}
-            title={theme === 'dark' ? 'Cambiar a Tema Claro' : 'Cambiar a Tema Oscuro'}
-            aria-label="Cambiar tema visual"
-            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-[#18313B] dark:text-[#F1F5F9] bg-[#F4F6F8] dark:bg-[#1B2B36] hover:bg-[#E8EFF2] dark:hover:bg-[#253947] border border-[#DCE4E8] dark:border-[#243542] rounded-lg transition-colors"
+          {/* Selector de Tema Claro / Oscuro Segmentado e Inequívoco */}
+          <div
+            className="flex items-center bg-[#F4F6F8] dark:bg-[#1B2B36] border border-[#DCE4E8] dark:border-[#243542] rounded-lg p-0.5 shadow-2xs"
+            role="group"
+            aria-label="Selector de tema visual"
           >
-            {theme === 'dark' ? (
-              <>
-                <Sun className="w-3.5 h-3.5 text-amber-400" />
-                <span className="hidden lg:inline">Claro</span>
-              </>
-            ) : (
-              <>
-                <Moon className="w-3.5 h-3.5 text-[#167D78]" />
-                <span className="hidden lg:inline">Oscuro</span>
-              </>
-            )}
-          </button>
+            <button
+              onClick={() => {
+                if (theme !== 'light') onToggleTheme();
+              }}
+              title="Activar Tema Claro"
+              aria-pressed={theme === 'light'}
+              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
+                theme === 'light'
+                  ? 'bg-white text-[#167D78] shadow-xs border border-[#167D78]/25 font-bold'
+                  : 'text-[#64748B] hover:text-[#18313B]'
+              }`}
+            >
+              <Sun className={`w-3.5 h-3.5 ${theme === 'light' ? 'text-amber-500 fill-amber-500' : 'text-[#64748B]'}`} />
+              <span className="hidden lg:inline">Claro</span>
+            </button>
+            <button
+              onClick={() => {
+                if (theme !== 'dark') onToggleTheme();
+              }}
+              title="Activar Tema Oscuro"
+              aria-pressed={theme === 'dark'}
+              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
+                theme === 'dark'
+                  ? 'bg-[#167D78] text-white shadow-xs font-bold'
+                  : 'text-[#64748B] dark:text-[#94A3B8] hover:text-[#18313B] dark:hover:text-white'
+              }`}
+            >
+              <Moon className={`w-3.5 h-3.5 ${theme === 'dark' ? 'text-cyan-200 fill-cyan-200' : 'text-[#64748B]'}`} />
+              <span className="hidden lg:inline">Oscuro</span>
+            </button>
+          </div>
 
           {/* Ayuda */}
           <button
@@ -405,28 +405,14 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             </div>
 
-            {/* Alternador de Modo Móvil */}
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => {
-                  onToggleInterfaceMode();
-                }}
-                className={`flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-bold transition-all ${
-                  interfaceMode === 'aprendizaje'
-                    ? 'bg-[#E8F5F5] dark:bg-[#167D78]/20 border-[#B7DFDD] text-[#167D78] dark:text-[#2DD4BF]'
-                    : 'bg-amber-500/10 border-amber-300 text-amber-700 dark:text-amber-300'
-                }`}
-              >
-                <GraduationCap className="w-4 h-4" />
-                <span>{interfaceMode === 'aprendizaje' ? 'Principiante' : 'Profesional'}</span>
-              </button>
-
+            {/* Selector de Tema en Móvil */}
+            <div>
               <button
                 onClick={onToggleTheme}
-                className="flex items-center justify-center gap-2 p-2.5 rounded-xl bg-[#F4F6F8] dark:bg-[#1B2B36] border border-[#DCE4E8] dark:border-[#243542] text-xs font-semibold"
+                className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl bg-[#F4F6F8] dark:bg-[#1B2B36] border border-[#DCE4E8] dark:border-[#243542] text-xs font-semibold text-[#18313B] dark:text-[#F1F5F9] transition-colors"
               >
                 {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-[#167D78]" />}
-                <span>Tema: {theme === 'dark' ? 'Oscuro' : 'Claro'}</span>
+                <span>Tema: {theme === 'dark' ? 'Modo Oscuro' : 'Modo Claro'}</span>
               </button>
             </div>
 

@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
-:root {
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *));
+
+:root, [data-theme="light"] {
   --bg-app: #F4F6F8;
   --bg-surface: #FFFFFF;
   --bg-surface-elevated: #F8FAFC;
@@ -21,9 +23,10 @@
   --color-success: #167D78;
   --cad-bg: #F8FAFC;
   --cad-grid-dot: rgba(100, 116, 139, 0.22);
+  --cad-grid-dots: #CBD5E1;
 }
 
-.dark {
+.dark, [data-theme="dark"] {
   --bg-app: #0D161C;
   --bg-surface: #142028;
   --bg-surface-elevated: #1B2B36;
@@ -107,6 +110,100 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
+}
+
+/* =========================================================================
+   SISTEMA DE TEMA CLARO (#F4F6F8 / #FFFFFF / #167D78 / #18313B)
+   Garantiza que toda la interfaz adopte el tema claro sin paneles oscuros residuales
+   ========================================================================= */
+html[data-theme="light"] body,
+html[data-theme="light"] {
+  background-color: #F4F6F8;
+  color: #18313B;
+}
+
+html[data-theme="light"] .bg-slate-950 {
+  background-color: #F4F6F8 !important;
+  color: #18313B;
+}
+
+html[data-theme="light"] .bg-slate-900,
+html[data-theme="light"] .bg-slate-900\/95,
+html[data-theme="light"] .bg-slate-900\/90,
+html[data-theme="light"] .bg-slate-900\/80,
+html[data-theme="light"] .bg-slate-900\/70,
+html[data-theme="light"] .bg-slate-900\/60,
+html[data-theme="light"] .bg-slate-900\/50 {
+  background-color: #FFFFFF !important;
+  border-color: #DCE4E8 !important;
+}
+
+html[data-theme="light"] .bg-slate-850,
+html[data-theme="light"] .bg-slate-800,
+html[data-theme="light"] .bg-slate-800\/90,
+html[data-theme="light"] .bg-slate-800\/80,
+html[data-theme="light"] .bg-slate-800\/60,
+html[data-theme="light"] .bg-slate-800\/50 {
+  background-color: #F8FAFC !important;
+  border-color: #DCE4E8 !important;
+}
+
+html[data-theme="light"] .border-slate-800,
+html[data-theme="light"] .border-slate-700,
+html[data-theme="light"] .border-slate-600 {
+  border-color: #DCE4E8 !important;
+}
+
+html[data-theme="light"] .text-slate-100,
+html[data-theme="light"] .text-slate-200 {
+  color: #18313B !important;
+}
+
+html[data-theme="light"] .text-slate-300,
+html[data-theme="light"] .text-slate-400 {
+  color: #64748B !important;
+}
+
+html[data-theme="light"] .text-slate-500 {
+  color: #8E9FAA !important;
+}
+
+/* Encabezados y títulos en blanco que están sobre fondos que ahora son blancos */
+html[data-theme="light"] h1.text-white,
+html[data-theme="light"] h2.text-white,
+html[data-theme="light"] h3.text-white,
+html[data-theme="light"] h4.text-white,
+html[data-theme="light"] span.text-white:not([class*="bg-"]):not(button *),
+html[data-theme="light"] div.text-white:not([class*="bg-"]):not(button *) {
+  color: #18313B !important;
+}
+
+/* Botones secundarios oscuros adaptados a claro */
+html[data-theme="light"] button.bg-slate-800,
+html[data-theme="light"] button.bg-slate-900 {
+  background-color: #FFFFFF !important;
+  border: 1px solid #DCE4E8 !important;
+  color: #18313B !important;
+}
+
+html[data-theme="light"] button.bg-slate-800:hover,
+html[data-theme="light"] button.bg-slate-900:hover {
+  background-color: #EDF2F5 !important;
+  color: #167D78 !important;
+}
+
+/* Inputs y Selects */
+html[data-theme="light"] input.bg-slate-900,
+html[data-theme="light"] input.bg-slate-950,
+html[data-theme="light"] input.bg-slate-800,
+html[data-theme="light"] select.bg-slate-900,
+html[data-theme="light"] select.bg-slate-950,
+html[data-theme="light"] select.bg-slate-800,
+html[data-theme="light"] textarea.bg-slate-900,
+html[data-theme="light"] textarea.bg-slate-950 {
+  background-color: #FFFFFF !important;
+  border-color: #DCE4E8 !important;
+  color: #18313B !important;
 }
 
 /* Print Styles */

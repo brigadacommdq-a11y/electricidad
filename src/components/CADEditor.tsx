@@ -26,6 +26,8 @@ import {
   AlertTriangle,
   Crosshair,
   GitBranch,
+  FlipHorizontal,
+  Sliders,
 } from 'lucide-react';
 import {
   Project,
@@ -59,6 +61,8 @@ interface CADEditorProps {
   onToggleSwitch: (symbolId: string) => void;
   isSimulating: boolean;
   simState?: SimulationState;
+  onOpenProperties?: () => void;
+  onResetTool?: () => void;
 }
 
 export const CADEditor: React.FC<CADEditorProps> = ({
@@ -74,6 +78,8 @@ export const CADEditor: React.FC<CADEditorProps> = ({
   onToggleSwitch,
   isSimulating,
   simState,
+  onOpenProperties,
+  onResetTool,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(1.0);
@@ -116,6 +122,14 @@ export const CADEditor: React.FC<CADEditorProps> = ({
   // Arrastre de elementos
   const [draggingSymbolId, setDraggingSymbolId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
+  // Elementos seleccionados para toolbar contextual
+  const selectedSymbol = selectedElementType === 'symbol' ? project.symbols.find((s) => s.id === selectedElementId) : null;
+  const selectedWire = selectedElementType === 'wire' ? project.wires.find((w) => w.id === selectedElementId) : null;
+  const selectedArch = (selectedElementType === 'wall' || selectedElementType === 'door' || selectedElementType === 'window')
+    ? project.architecturalElements.find((a) => a.id === selectedElementId)
+    : null;
+  const selectedRoom = selectedElementType === 'room' ? project.rooms.find((r) => r.id === selectedElementId) : null;
 
   // Arrastre y movimiento de habitaciones completas con su contenido
   const [draggingRoomId, setDraggingRoomId] = useState<string | null>(null);
@@ -613,11 +627,19 @@ export const CADEditor: React.FC<CADEditorProps> = ({
     }
   };
 
-  // Eliminar elemento seleccionado
+  // Eliminar elemento seleccionado con confirmación si afecta conexiones
   const handleDeleteSelected = () => {
     if (!selectedElementId) return;
 
     if (selectedElementType === 'symbol') {
+      const connectedWires = project.wires.filter(
+        (w) => w.fromComponentId === selectedElementId || w.toComponentId === selectedElementId
+      );
+      if (connectedWires.length > 0) {
+        if (!confirm(`Este componente tiene ${connectedWires.length} cable(s) conectado(s). ¿Deseas eliminarlo junto con sus conexiones?`)) {
+          return;
+        }
+      }
       onUpdateProject((prev) => ({
         ...prev,
         symbols: prev.symbols.filter((s) => s.id !== selectedElementId),
@@ -653,7 +675,7 @@ export const CADEditor: React.FC<CADEditorProps> = ({
         rooms: prev.rooms.filter((r) => r.id !== selectedElementId),
       }));
       onSelectElement(null, null);
-    } else if (selectedElementType === 'wall') {
+    } else if (selectedElementType === 'wall' || selectedElementType === 'door' || selectedElementType === 'window') {
       onUpdateProject((prev) => ({
         ...prev,
         architecturalElements: prev.architecturalElements.filter((a) => a.id !== selectedElementId),
@@ -662,13 +684,55 @@ export const CADEditor: React.FC<CADEditorProps> = ({
     }
   };
 
-  // Rotar símbolo 90°
+  // Rotar símbolo o abertura 90°
   const handleRotateSelected = () => {
     if (selectedElementType === 'symbol' && selectedElementId) {
       onUpdateProject((prev) => ({
         ...prev,
         symbols: prev.symbols.map((s) =>
           s.id === selectedElementId ? { ...s, rotation: (s.rotation + 90) % 360 } : s
+        ),
+      }));
+    } else if ((selectedElementType === 'door' || selectedElementType === 'window') && selectedElementId) {
+      onUpdateProject((prev) => ({
+        ...prev,
+        architecturalElements: prev.architecturalElements.map((a) => {
+          if (a.id !== selectedElementId) return a;
+          const currentRot = a.rotation || 0;
+          const newRot = (currentRot + 90) % 360;
+          const dx = a.x2 - a.x1;
+          const dy = a.y2 - a.y1;
+          const len = Math.hypot(dx, dy) || 40;
+          const rad = (newRot * Math.PI) / 180;
+          return {
+            ...a,
+            rotation: newRot,
+            x2: Math.round(a.x1 + len * Math.cos(rad)),
+            y2: Math.round(a.y1 + len * Math.sin(rad)),
+          };
+        }),
+      }));
+    }
+  };
+
+  // Invertir horizontalmente o verticalmente
+  const handleFlipSelected = (axis: 'H' | 'V') => {
+    if (selectedElementType === 'symbol' && selectedElementId) {
+      onUpdateProject((prev) => ({
+        ...prev,
+        symbols: prev.symbols.map((s) =>
+          s.id === selectedElementId
+            ? { ...s, flipH: axis === 'H' ? !s.flipH : s.flipH, flipV: axis === 'V' ? !s.flipV : s.flipV }
+            : s
+        ),
+      }));
+    } else if ((selectedElementType === 'door' || selectedElementType === 'window') && selectedElementId) {
+      onUpdateProject((prev) => ({
+        ...prev,
+        architecturalElements: prev.architecturalElements.map((a) =>
+          a.id === selectedElementId
+            ? { ...a, flipH: axis === 'H' ? !a.flipH : a.flipH, flipV: axis === 'V' ? !a.flipV : a.flipV }
+            : a
         ),
       }));
     }
@@ -1107,33 +1171,33 @@ export const CADEditor: React.FC<CADEditorProps> = ({
 
       {/* 2. Dock Flotante Táctil para Móviles (Android / iOS en pantallas pequeñas) */}
       <div className="flex sm:hidden absolute top-2 right-2 z-20 flex-col items-end gap-1.5">
-        {/* Grupo de zoom y navegación táctil */}
+        {/* Grupo de zoom y navegación táctil con objetivos mínimos de 44px */}
         <div className="flex flex-col bg-white/95 dark:bg-[#142028]/95 border border-[#DCE4E8] dark:border-[#243542] rounded-xl shadow-xl backdrop-blur-md overflow-hidden">
           <button
             onClick={() => setIsPanMode(!isPanMode)}
             title="Alternar entre mover plano y editar"
-            className={`p-2.5 flex items-center justify-center transition-colors border-b border-[#DCE4E8] dark:border-[#243542] ${
+            className={`w-11 h-11 min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors border-b border-[#DCE4E8] dark:border-[#243542] ${
               isPanMode ? 'bg-[#167D78] text-white font-bold' : 'text-[#18313B] dark:text-slate-300 active:bg-slate-100 dark:active:bg-slate-800'
             }`}
           >
-            <Hand className="w-4 h-4" />
+            <Hand className="w-5 h-5" />
           </button>
           <button
             onClick={() => setZoom((z) => Math.min(2.5, z + 0.2))}
             title="Acercar vista"
-            className="p-2.5 text-[#18313B] dark:text-slate-200 active:bg-slate-100 dark:active:bg-slate-800 border-b border-[#DCE4E8] dark:border-[#243542] flex items-center justify-center"
+            className="w-11 h-11 min-h-[44px] min-w-[44px] text-[#18313B] dark:text-slate-200 active:bg-slate-100 dark:active:bg-slate-800 border-b border-[#DCE4E8] dark:border-[#243542] flex items-center justify-center"
           >
-            <ZoomIn className="w-4 h-4" />
+            <ZoomIn className="w-5 h-5" />
           </button>
-          <div className="text-[9px] font-mono font-bold text-center py-1 text-[#64748B] dark:text-slate-400 border-b border-[#DCE4E8] dark:border-[#243542]">
+          <div className="text-[10px] font-mono font-bold text-center py-1 text-[#64748B] dark:text-slate-400 border-b border-[#DCE4E8] dark:border-[#243542]">
             {Math.round(zoom * 100)}%
           </div>
           <button
             onClick={() => setZoom((z) => Math.max(0.4, z - 0.2))}
             title="Alejar vista"
-            className="p-2.5 text-[#18313B] dark:text-slate-200 active:bg-slate-100 dark:active:bg-slate-800 border-b border-[#DCE4E8] dark:border-[#243542] flex items-center justify-center"
+            className="w-11 h-11 min-h-[44px] min-w-[44px] text-[#18313B] dark:text-slate-200 active:bg-slate-100 dark:active:bg-slate-800 border-b border-[#DCE4E8] dark:border-[#243542] flex items-center justify-center"
           >
-            <ZoomOut className="w-4 h-4" />
+            <ZoomOut className="w-5 h-5" />
           </button>
           <button
             onClick={() => {
@@ -1141,34 +1205,129 @@ export const CADEditor: React.FC<CADEditorProps> = ({
               setPan({ x: 40, y: 30 });
             }}
             title="Centrar plano"
-            className="p-2.5 text-[#18313B] dark:text-slate-200 active:bg-slate-100 dark:active:bg-slate-800 flex items-center justify-center"
+            className="w-11 h-11 min-h-[44px] min-w-[44px] text-[#18313B] dark:text-slate-200 active:bg-slate-100 dark:active:bg-slate-800 flex items-center justify-center"
           >
-            <Maximize2 className="w-4 h-4" />
+            <Maximize2 className="w-5 h-5" />
           </button>
         </div>
+      </div>
 
-        {/* Acciones si hay elemento seleccionado en móvil */}
-        {selectedElementId && (
-          <div className="flex flex-col bg-white/95 dark:bg-[#142028]/95 border border-[#DCE4E8] dark:border-[#243542] rounded-xl shadow-xl backdrop-blur-md overflow-hidden">
-            {selectedElementType === 'symbol' && (
+      {/* 3. Barra Contextual Flotante (Contextual Toolbar) al seleccionar cualquier elemento */}
+      {selectedElementId && (
+        <div
+          role="toolbar"
+          aria-label="Acciones del elemento seleccionado"
+          className="absolute bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 z-35 max-w-[94vw] bg-white/95 dark:bg-[#142028]/95 border border-[#DCE4E8] dark:border-[#243542] rounded-2xl shadow-2xl backdrop-blur-md px-3 py-2 flex items-center gap-2 overflow-x-auto scrollbar-none animate-fade-in"
+        >
+          {/* Nombre/Tipo del elemento seleccionado */}
+          <div className="flex items-center gap-1.5 pr-2 border-r border-[#DCE4E8] dark:border-[#243542] shrink-0">
+            <span className="w-2 h-2 rounded-full bg-[#167D78] dark:bg-[#2DD4BF] animate-pulse shrink-0" />
+            <span className="text-xs font-bold text-[#18313B] dark:text-white truncate max-w-[120px] sm:max-w-[180px]">
+              {selectedSymbol?.name ||
+                (selectedElementType === 'wire' ? `Cable ${selectedWire?.type || ''} ${selectedWire?.crossSectionMm2 || 2.5}mm²` : '') ||
+                selectedArch?.type ||
+                selectedRoom?.name ||
+                'Elemento'}
+            </span>
+          </div>
+
+          {/* Acciones para símbolos */}
+          {selectedElementType === 'symbol' && (
+            <>
               <button
                 onClick={handleRotateSelected}
-                title="Rotar símbolo"
-                className="p-2.5 text-[#167D78] dark:text-[#2DD4BF] active:bg-slate-100 dark:active:bg-slate-800 border-b border-[#DCE4E8] dark:border-[#243542] flex items-center justify-center"
+                title="Rotar 90° (R)"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#18313B] dark:text-[#F1F5F9] bg-[#F4F6F8] dark:bg-[#1B2B36] hover:bg-[#E8EFF2] border border-[#DCE4E8] dark:border-[#243542] shrink-0 min-h-[44px]"
               >
-                <RotateCw className="w-4 h-4" />
+                <RotateCw className="w-4 h-4 text-[#167D78] dark:text-[#2DD4BF]" />
+                <span className="hidden sm:inline">Rotar 90°</span>
               </button>
-            )}
+              <button
+                onClick={() => handleFlipSelected('H')}
+                title="Invertir horizontalmente"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#18313B] dark:text-[#F1F5F9] bg-[#F4F6F8] dark:bg-[#1B2B36] hover:bg-[#E8EFF2] border border-[#DCE4E8] dark:border-[#243542] shrink-0 min-h-[44px]"
+              >
+                <FlipHorizontal className="w-4 h-4 text-[#167D78] dark:text-[#2DD4BF]" />
+                <span className="hidden sm:inline">Invertir H</span>
+              </button>
+            </>
+          )}
+
+          {/* Acciones para aberturas (puertas / ventanas) */}
+          {(selectedElementType === 'door' || selectedElementType === 'window') && (
+            <>
+              <button
+                onClick={handleRotateSelected}
+                title="Rotar apertura"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#18313B] dark:text-[#F1F5F9] bg-[#F4F6F8] dark:bg-[#1B2B36] hover:bg-[#E8EFF2] border border-[#DCE4E8] dark:border-[#243542] shrink-0 min-h-[44px]"
+              >
+                <RotateCw className="w-4 h-4 text-[#167D78] dark:text-[#2DD4BF]" />
+                <span className="hidden sm:inline">Rotar</span>
+              </button>
+              <button
+                onClick={() => handleFlipSelected('H')}
+                title="Cambiar sentido de apertura"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#18313B] dark:text-[#F1F5F9] bg-[#F4F6F8] dark:bg-[#1B2B36] hover:bg-[#E8EFF2] border border-[#DCE4E8] dark:border-[#243542] shrink-0 min-h-[44px]"
+              >
+                <FlipHorizontal className="w-4 h-4 text-[#167D78] dark:text-[#2DD4BF]" />
+                <span className="hidden sm:inline">Invertir Sentido</span>
+              </button>
+            </>
+          )}
+
+          {/* Botón para abrir Propiedades Técnicas completas */}
+          {onOpenProperties && (
             <button
-              onClick={handleDeleteSelected}
-              title="Eliminar elemento"
-              className="p-2.5 text-[#DC2626] active:bg-red-50 dark:active:bg-red-950/40 flex items-center justify-center"
+              onClick={onOpenProperties}
+              title="Abrir propiedades técnicas del elemento"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#167D78] dark:text-[#2DD4BF] bg-[#E8F5F5] dark:bg-[#167D78]/20 border border-[#B7DFDD] dark:border-[#167D78]/40 shrink-0 min-h-[44px]"
             >
-              <Trash2 className="w-4 h-4" />
+              <Sliders className="w-4 h-4" />
+              <span>Propiedades</span>
             </button>
-          </div>
-        )}
-      </div>
+          )}
+
+          {/* Botón Eliminar con confirmación */}
+          <button
+            onClick={handleDeleteSelected}
+            title="Eliminar elemento seleccionado (Supr)"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#DC2626] bg-red-50 dark:bg-red-950/40 hover:bg-red-100 border border-red-200 dark:border-red-800 shrink-0 min-h-[44px]"
+          >
+            <Trash2 className="w-4 h-4" />
+            <span className="hidden sm:inline">Eliminar</span>
+          </button>
+
+          {/* Botón Deseleccionar / Cerrar */}
+          <button
+            onClick={() => onSelectElement(null, null)}
+            title="Deseleccionar (Esc)"
+            className="p-2.5 text-[#64748B] hover:text-[#18313B] dark:hover:text-white bg-[#F4F6F8] dark:bg-[#1B2B36] rounded-xl border border-[#DCE4E8] dark:border-[#243542] shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* 4. Botón flotante para Cancelar Acción actual / Volver a Selección */}
+      {(activeTool !== 'select' || wiringStart) && (
+        <div className="absolute top-14 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 bg-[#18313B]/95 text-white px-3.5 py-2 rounded-2xl shadow-2xl border border-amber-400 backdrop-blur-md animate-fade-in">
+          <span className="text-xs font-medium">
+            {wiringStart
+              ? `Cableando ${wiringStart.terminalId}...`
+              : `Herramienta: ${activeTool === 'place_symbol' ? selectedTemplateType || 'símbolo' : activeTool}`}
+          </span>
+          <button
+            onClick={() => {
+              setWiringStart(null);
+              if (onResetTool) onResetTool();
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs rounded-xl transition-all shadow-md active:scale-95 min-h-[40px]"
+          >
+            <X className="w-4 h-4" />
+            <span>Cancelar Acción</span>
+          </button>
+        </div>
+      )}
 
       {/* Cartel flotante en móvil cuando Modo Mover está activo */}
       {isPanMode && (

@@ -25,6 +25,7 @@ import { DiagnosticsView } from './components/DiagnosticsView';
 import { PhotoAnalysisView } from './components/PhotoAnalysisView';
 import { VisualExplanationsView } from './components/VisualExplanationsView';
 import { PhaseBalancingView } from './components/PhaseBalancingView';
+import { SettingsView } from './components/SettingsView';
 import { HelpModal } from './components/HelpModal';
 import { ProjectManagerModal } from './components/ProjectManagerModal';
 import { AcometidaPilarModal } from './components/AcometidaPilarModal';
@@ -34,6 +35,7 @@ import {
   getActiveProjectId,
   DEMO_PROJECT_ID,
 } from './services/projectStorage';
+import { AppSettings, loadSettings, saveSettings } from './services/settingsService';
 import { Compass, Sliders, X, GitCommit, ChevronLeft, ChevronRight, PanelRightClose, PanelRightOpen } from 'lucide-react';
 
 const STORAGE_KEY = 'electra_plan_project_v1';
@@ -77,18 +79,6 @@ export default function App() {
   const [selectedElementType, setSelectedElementType] = useState<'symbol' | 'wire' | 'room' | 'wall' | 'door' | 'window' | null>(null);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
 
-  // Modo de interfaz (Aprendizaje vs Profesional)
-  const interfaceMode = project.metadata.interfaceMode || 'aprendizaje';
-  const handleToggleInterfaceMode = useCallback(() => {
-    setProject((prev) => ({
-      ...prev,
-      metadata: {
-        ...prev.metadata,
-        interfaceMode: prev.metadata.interfaceMode === 'profesional' ? 'aprendizaje' : 'profesional',
-      },
-    }));
-  }, []);
-
   // Estado de guardado y modales
   const [saveStatus, setSaveStatus] = useState<string>('Guardado');
   const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false);
@@ -97,34 +87,32 @@ export default function App() {
   const [isMobileToolbarOpen, setIsMobileToolbarOpen] = useState<boolean>(false);
   const [isMobilePropertiesOpen, setIsMobilePropertiesOpen] = useState<boolean>(false);
 
-  // Sistema de Tema: Claro (#F4F6F8) por defecto y Oscuro (#0D161C) con persistencia
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    try {
-      const savedTheme = localStorage.getItem('electra_plan_theme');
-      if (savedTheme === 'dark' || savedTheme === 'light') {
-        return savedTheme;
-      }
-    } catch {
-      // Ignorar fallback
-    }
-    return 'light'; // Por defecto tema claro profesional
-  });
+  // Configuración y Preferencias del Sistema
+  const [settings, setSettings] = useState<AppSettings>(() => loadSettings());
+
+  // Sistema de Tema: sincronizado con settings
+  const theme = settings.theme;
 
   useEffect(() => {
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
+      document.documentElement.setAttribute('data-theme', 'dark');
+      document.body.classList.add('dark');
+      document.body.setAttribute('data-theme', 'dark');
     } else {
       document.documentElement.classList.remove('dark');
+      document.documentElement.setAttribute('data-theme', 'light');
+      document.body.classList.remove('dark');
+      document.body.setAttribute('data-theme', 'light');
     }
-    try {
-      localStorage.setItem('electra_plan_theme', theme);
-    } catch {
-      // Ignorar fallback
-    }
-  }, [theme]);
+    saveSettings(settings);
+  }, [settings, theme]);
 
   const handleToggleTheme = useCallback(() => {
-    setTheme((t) => (t === 'light' ? 'dark' : 'light'));
+    setSettings((prev) => ({
+      ...prev,
+      theme: prev.theme === 'light' ? 'dark' : 'light',
+    }));
   }, []);
 
   // Panel de propiedades lateral contraíble para maximizar el área de dibujo en el plano
@@ -354,18 +342,23 @@ export default function App() {
         onShowHelp={() => setIsHelpOpen(true)}
         isSimulating={simState.activeLamps.size > 0}
         saveStatus={saveStatus}
-        interfaceMode={interfaceMode}
-        onToggleInterfaceMode={handleToggleInterfaceMode}
         theme={theme}
         onToggleTheme={handleToggleTheme}
       />
 
-      {/* 2. Pestañas de Navegación */}
+      {/* 2. Barra de Navegación Organizada en 6 Categorías */}
       <Navigation
         activeTab={activeTab}
         onTabChange={setActiveTab}
         activeLampsCount={simState.activeLamps.size}
         hasErrors={simState.hasShortCircuit}
+        onOpenAcometidaModal={() => setIsAcometidaModalOpen(true)}
+        onOpenProjectManager={() => setIsProjectManagerOpen(true)}
+        isMobileToolbarOpen={isMobileToolbarOpen}
+        onToggleMobileToolbar={() => setIsMobileToolbarOpen(!isMobileToolbarOpen)}
+        isMobilePropertiesOpen={isMobilePropertiesOpen}
+        onToggleMobileProperties={() => setIsMobilePropertiesOpen(!isMobilePropertiesOpen)}
+        selectedElementId={selectedElementId}
       />
 
       {/* 3. Área de Contenido Principal según la Pestaña Activa */}
@@ -411,63 +404,28 @@ export default function App() {
                 onToggleSwitch={handleToggleSwitch}
                 isSimulating={true}
                 simState={simState}
+                onOpenProperties={() => setIsMobilePropertiesOpen(true)}
+                onResetTool={() => setActiveTool('select')}
               />
 
-              {/* Barra flotante inferior de acciones para Móvil (< lg) */}
-              <div className="lg:hidden absolute bottom-11 left-2 right-2 z-20 flex items-center justify-between gap-1.5 pointer-events-auto">
-                <button
-                  onClick={() => setIsMobileToolbarOpen(true)}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-white/95 dark:bg-[#142028]/95 active:bg-[#F1F5F9] dark:active:bg-[#1B2B36] border border-[#DCE4E8] dark:border-[#243542] text-[#18313B] dark:text-[#F1F5F9] rounded-xl shadow-xl backdrop-blur-md text-xs font-semibold"
-                >
-                  <Compass className="w-4 h-4 text-[#167D78] dark:text-[#2DD4BF] shrink-0" />
-                  <span className="truncate max-w-[120px]">
-                    {activeTool === 'place_symbol' && selectedTemplateType
-                      ? `Símbolo: ${selectedTemplateType}`
-                      : activeTool === 'wire'
-                      ? 'Cablear'
-                      : activeTool === 'room'
-                      ? 'Ambiente'
-                      : 'Herramientas'}
-                  </span>
-                </button>
-
-                {/* Si la herramienta activa es cable, selector rápido de conductor */}
-                {activeTool === 'wire' && (
-                  <div className="flex items-center gap-1 bg-white/95 dark:bg-[#142028]/95 border border-[#DCE4E8] dark:border-[#243542] p-1 rounded-xl shadow-xl backdrop-blur-md">
-                    {(['fase', 'neutro', 'tierra', 'retorno'] as ConductorType[]).map((t) => (
-                      <button
-                        key={t}
-                        onClick={() => setActiveWireType(t)}
-                        className={`px-1.5 py-1 text-[10px] rounded font-bold uppercase transition-all ${
-                          activeWireType === t
-                            ? 'bg-[#167D78] text-white shadow-xs'
-                            : 'text-[#64748B] dark:text-slate-400 hover:text-[#18313B] dark:hover:text-white'
-                        }`}
-                      >
-                        {t === 'tierra' ? 'PE' : t === 'retorno' ? 'Ret' : t.slice(0, 3)}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                <button
-                  onClick={() => setIsMobilePropertiesOpen(true)}
-                  className={`flex items-center gap-1.5 px-3 py-2 border rounded-xl shadow-xl backdrop-blur-md text-xs font-semibold transition-all ${
-                    selectedElementId
-                      ? 'bg-[#167D78] text-white border-[#167D78] ring-2 ring-[#167D78]/30'
-                      : 'bg-white/95 dark:bg-[#142028]/95 active:bg-[#F1F5F9] dark:active:bg-[#1B2B36] border-[#DCE4E8] dark:border-[#243542] text-[#18313B] dark:text-[#F1F5F9]'
-                  }`}
-                >
-                  <Sliders className="w-4 h-4 shrink-0" />
-                  <span className="truncate max-w-[110px]">
-                    {selectedElementId
-                      ? selectedElementType === 'symbol'
-                        ? 'Editar'
-                        : 'Propiedades'
-                      : 'Propiedades'}
-                  </span>
-                </button>
-              </div>
+              {/* Selector de tipo de conductor cuando la herramienta activa es cable */}
+              {activeTool === 'wire' && (
+                <div className="absolute top-14 right-2 z-20 flex items-center gap-1 bg-white/95 dark:bg-[#142028]/95 border border-[#DCE4E8] dark:border-[#243542] p-1 rounded-xl shadow-xl backdrop-blur-md animate-fade-in">
+                  {(['fase', 'neutro', 'tierra', 'retorno'] as ConductorType[]).map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setActiveWireType(t)}
+                      className={`px-2 py-1 text-[11px] rounded font-bold uppercase transition-all min-h-[36px] ${
+                        activeWireType === t
+                          ? 'bg-[#167D78] text-white shadow-xs'
+                          : 'text-[#64748B] dark:text-slate-400 hover:text-[#18313B] dark:hover:text-white'
+                      }`}
+                    >
+                      {t === 'tierra' ? 'PE' : t === 'retorno' ? 'Ret' : t.slice(0, 3)}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {/* Barra inferior de diagnósticos */}
               <DiagnosticsBar
@@ -695,6 +653,19 @@ export default function App() {
         )}
 
         {activeTab === 'informe' && <ReportView project={project} />}
+
+        {activeTab === 'configuracion' && (
+          <SettingsView
+            settings={settings}
+            onUpdateSettings={setSettings}
+            project={project}
+            onOpenProjectManager={() => setIsProjectManagerOpen(true)}
+            onExportJSON={handleExportJSON}
+            onImportJSON={handleImportJSON}
+            onResetDemo={handleOpenDemo}
+            saveStatus={saveStatus}
+          />
+        )}
       </main>
 
       {/* Modal de Gestor de Proyectos y Creación desde Cero */}
