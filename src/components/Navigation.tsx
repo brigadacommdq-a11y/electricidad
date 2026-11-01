@@ -37,6 +37,7 @@ import {
 
 export type ActiveTab =
   | 'plano'
+  | 'estudio_3d'
   | 'simulador'
   | 'circuitos'
   | 'calculos'
@@ -321,7 +322,7 @@ export const Navigation: React.FC<NavigationProps> = ({
       >
         <div className="px-3 sm:px-4 py-1.5 flex items-center justify-between gap-2 max-w-full">
           <nav className="flex items-center gap-1 sm:gap-1.5 flex-wrap" aria-label="Navegación principal">
-            {/* Acceso Rápido 1: Plano CAD (Área Principal) */}
+            {/* Acceso Rápido 1: Plano 2D */}
             <button
               onClick={() => handleSelectTab('plano')}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all min-h-[36px] ${
@@ -329,9 +330,24 @@ export const Navigation: React.FC<NavigationProps> = ({
                   ? 'bg-[#E8F5F5] dark:bg-[#167D78]/25 text-[#167D78] dark:text-[#2DD4BF] font-bold border border-[#B7DFDD] dark:border-[#167D78]/50 shadow-2xs'
                   : 'text-[#64748B] dark:text-[#94A3B8] hover:text-[#18313B] dark:hover:text-white hover:bg-[#F4F6F8] dark:hover:bg-[#1B2B36]'
               }`}
+              title="Ver y diseñar en Plano 2D"
             >
               <Layers className={`w-4 h-4 ${activeTab === 'plano' ? 'text-[#167D78] dark:text-[#2DD4BF]' : 'text-[#8E9FAA]'}`} />
-              <span>Plano CAD</span>
+              <span>Plano 2D</span>
+            </button>
+
+            {/* Acceso Rápido 2: Estudio 3D */}
+            <button
+              onClick={() => handleSelectTab('estudio_3d')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all min-h-[36px] ${
+                activeTab === 'estudio_3d'
+                  ? 'bg-[#E8F5F5] dark:bg-[#167D78]/25 text-[#167D78] dark:text-[#2DD4BF] font-bold border border-[#B7DFDD] dark:border-[#167D78]/50 shadow-2xs'
+                  : 'text-[#64748B] dark:text-[#94A3B8] hover:text-[#18313B] dark:hover:text-white hover:bg-[#F4F6F8] dark:hover:bg-[#1B2B36]'
+              }`}
+              title="Visualizar maqueta e instalación en Estudio 3D"
+            >
+              <Box className={`w-4 h-4 ${activeTab === 'estudio_3d' ? 'text-[#167D78] dark:text-[#2DD4BF]' : 'text-[#8E9FAA]'}`} />
+              <span>Estudio 3D</span>
             </button>
 
             {/* Acceso Rápido 2: Simulador */}
@@ -452,19 +468,36 @@ export const Navigation: React.FC<NavigationProps> = ({
           ========================================================================= */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#142028]/95 border-t border-[#DCE4E8] dark:border-[#243542] backdrop-blur-md pb-[env(safe-area-inset-bottom)] shadow-lg no-print">
         <div className="grid grid-cols-4 h-14 items-center px-1">
-          {/* Botón 1: Plano */}
+          {/* Botón 1: Plano 2D / Estudio 3D */}
           <button
             onClick={() => {
-              handleSelectTab('plano');
+              if (activeTab === 'estudio_3d') {
+                handleSelectTab('plano');
+              } else if (activeTab === 'plano') {
+                handleSelectTab('estudio_3d');
+              } else {
+                handleSelectTab('plano');
+              }
+              setIsMobileMenuSheetOpen(false);
             }}
             className={`flex flex-col items-center justify-center h-full min-h-[48px] transition-colors ${
-              activeTab === 'plano' && !isMobileToolbarOpen && !isMobilePropertiesOpen && !isMobileMenuSheetOpen
+              (activeTab === 'plano' || activeTab === 'estudio_3d') && !isMobileToolbarOpen && !isMobilePropertiesOpen && !isMobileMenuSheetOpen
                 ? 'text-[#167D78] dark:text-[#2DD4BF] font-bold'
                 : 'text-[#64748B] dark:text-[#94A3B8] hover:text-[#18313B]'
             }`}
+            title="Alternar entre Plano 2D y Estudio 3D"
           >
-            <Layers className="w-5 h-5 mb-0.5" />
-            <span className="text-[10px]">Plano</span>
+            {activeTab === 'estudio_3d' ? (
+              <>
+                <Box className="w-5 h-5 mb-0.5 text-[#167D78] dark:text-[#2DD4BF]" />
+                <span className="text-[10px]">Estudio 3D</span>
+              </>
+            ) : (
+              <>
+                <Layers className="w-5 h-5 mb-0.5" />
+                <span className="text-[10px]">Plano 2D</span>
+              </>
+            )}
           </button>
 
           {/* Botón 2: Componentes / Catálogo CAD */}
@@ -559,23 +592,34 @@ export const Navigation: React.FC<NavigationProps> = ({
                 <div className="text-[10px] font-bold text-[#167D78] dark:text-[#2DD4BF] uppercase px-1 mb-1">
                   1. Plano de Trabajo
                 </div>
-                <div className="grid grid-cols-2 gap-1.5">
+                <div className="grid grid-cols-3 gap-1.5">
                   <button
                     onClick={() => handleSelectTab('plano')}
-                    className={`p-2.5 rounded-lg text-left text-xs font-semibold flex items-center gap-2 min-h-[44px] ${
+                    className={`p-2 rounded-lg text-left text-xs font-semibold flex items-center gap-1.5 min-h-[44px] ${
                       activeTab === 'plano'
-                        ? 'bg-[#167D78] text-white'
+                        ? 'bg-[#167D78] text-white shadow-xs'
                         : 'bg-white dark:bg-[#142028] text-[#18313B] dark:text-[#F1F5F9] border border-[#DCE4E8] dark:border-[#243542]'
                     }`}
                   >
                     <Layers className="w-4 h-4 shrink-0" />
-                    <span>Plano CAD</span>
+                    <span>Plano 2D</span>
+                  </button>
+                  <button
+                    onClick={() => handleSelectTab('estudio_3d')}
+                    className={`p-2 rounded-lg text-left text-xs font-semibold flex items-center gap-1.5 min-h-[44px] ${
+                      activeTab === 'estudio_3d'
+                        ? 'bg-[#167D78] text-white shadow-xs'
+                        : 'bg-white dark:bg-[#142028] text-[#18313B] dark:text-[#F1F5F9] border border-[#DCE4E8] dark:border-[#243542]'
+                    }`}
+                  >
+                    <Box className="w-4 h-4 shrink-0" />
+                    <span>Estudio 3D</span>
                   </button>
                   <button
                     onClick={() => handleSelectTab('simulador')}
-                    className={`p-2.5 rounded-lg text-left text-xs font-semibold flex items-center gap-2 min-h-[44px] ${
+                    className={`p-2 rounded-lg text-left text-xs font-semibold flex items-center gap-1.5 min-h-[44px] ${
                       activeTab === 'simulador'
-                        ? 'bg-[#167D78] text-white'
+                        ? 'bg-[#167D78] text-white shadow-xs'
                         : 'bg-white dark:bg-[#142028] text-[#18313B] dark:text-[#F1F5F9] border border-[#DCE4E8] dark:border-[#243542]'
                     }`}
                   >

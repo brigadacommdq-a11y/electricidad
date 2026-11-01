@@ -66,6 +66,8 @@ interface CADEditorProps {
   simState?: SimulationState;
   onOpenProperties?: () => void;
   onResetTool?: () => void;
+  is3DView?: boolean;
+  onToggle3DView?: (is3D: boolean) => void;
 }
 
 export const CADEditor: React.FC<CADEditorProps> = ({
@@ -84,6 +86,8 @@ export const CADEditor: React.FC<CADEditorProps> = ({
   simState,
   onOpenProperties,
   onResetTool,
+  is3DView: is3DViewProp,
+  onToggle3DView,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(1.0);
@@ -101,7 +105,16 @@ export const CADEditor: React.FC<CADEditorProps> = ({
 
   // Modos de Visualización Realista y 3D
   const [viewMode, setViewMode] = useState<CADViewMode>('realista');
-  const [is3DView, setIs3DView] = useState<boolean>(false);
+  const [internal3DView, setInternal3DView] = useState<boolean>(false);
+  const is3DView = is3DViewProp !== undefined ? is3DViewProp : internal3DView;
+
+  const handleSet3DView = (val: boolean) => {
+    setInternal3DView(val);
+    if (onToggle3DView) {
+      onToggle3DView(val);
+    }
+  };
+
   const [learningType, setLearningType] = useState<string | null>(null);
   // Control de tamaño y visibilidad de etiquetas permanentes
   const [labelSize, setLabelSize] = useState<'oculto' | 'pequeno' | 'mediano' | 'grande'>('mediano');
@@ -823,35 +836,35 @@ export const CADEditor: React.FC<CADEditorProps> = ({
       className="relative flex-1 h-full w-full bg-[#F8FAFC] dark:bg-[#0B1218] overflow-hidden select-none cursor-crosshair touch-none transition-colors duration-150"
     >
       {/* Selector de Modos de Vista Realista / Conexiones / Esquemática y Estudio 3D */}
-      <div className="absolute top-2 sm:top-3 left-2 sm:left-3 z-20 flex flex-wrap items-center gap-1.5 max-w-[85vw] sm:max-w-none">
-        {/* Alternador 2D / 3D */}
-        <div className="flex items-center bg-white/95 dark:bg-[#142028]/95 border border-[#DCE4E8] dark:border-[#243542] rounded-lg p-0.5 shadow-xl backdrop-blur-md">
-          <button
-            onClick={() => setIs3DView(false)}
-            className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
-              !is3DView
-                ? 'bg-[#167D78] text-white font-bold shadow-xs'
-                : 'text-[#64748B] dark:text-slate-400 hover:text-[#18313B] dark:hover:text-white'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span>Plano 2D</span>
-          </button>
-          <button
-            onClick={() => setIs3DView(true)}
-            className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
-              is3DView
-                ? 'bg-[#0F5E5A] text-white font-bold shadow-xs'
-                : 'text-[#64748B] dark:text-slate-400 hover:text-[#18313B] dark:hover:text-white'
-            }`}
-          >
-            <Box className="w-3.5 h-3.5" />
-            <span>Estudio 3D</span>
-          </button>
-        </div>
+      {!is3DView && (
+        <div className="absolute top-2 sm:top-3 left-2 sm:left-3 z-20 flex flex-wrap items-center gap-1.5 max-w-[85vw] sm:max-w-none">
+          {/* Alternador 2D / 3D */}
+          <div className="flex items-center bg-white/95 dark:bg-[#142028]/95 border border-[#DCE4E8] dark:border-[#243542] rounded-lg p-0.5 shadow-xl backdrop-blur-md">
+            <button
+              onClick={() => handleSet3DView(false)}
+              className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                !is3DView
+                  ? 'bg-[#167D78] text-white font-bold shadow-xs'
+                  : 'text-[#64748B] dark:text-slate-400 hover:text-[#18313B] dark:hover:text-white'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Plano 2D</span>
+            </button>
+            <button
+              onClick={() => handleSet3DView(true)}
+              className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                is3DView
+                  ? 'bg-[#0F5E5A] text-white font-bold shadow-xs'
+                  : 'text-[#64748B] dark:text-slate-400 hover:text-[#18313B] dark:hover:text-white'
+              }`}
+            >
+              <Box className="w-3.5 h-3.5" />
+              <span>Estudio 3D</span>
+            </button>
+          </div>
 
-        {/* Selector de los 3 Modos de Visualización Requeridos: REALISTA / SÍMBOLO / APRENDER */}
-        {!is3DView && (
+          {/* Selector de los 3 Modos de Visualización Requeridos: REALISTA / SÍMBOLO / APRENDER */}
           <div className="flex items-center bg-white/95 dark:bg-[#142028]/95 border border-[#DCE4E8] dark:border-[#243542] rounded-lg p-0.5 shadow-xl backdrop-blur-md">
             <button
               onClick={() => setViewMode('realista')}
@@ -887,10 +900,8 @@ export const CADEditor: React.FC<CADEditorProps> = ({
               APRENDER
             </button>
           </div>
-        )}
 
-        {/* Control de Tamaño y Visibilidad de Etiquetas Permanentes */}
-        {!is3DView && (
+          {/* Control de Tamaño y Visibilidad de Etiquetas Permanentes */}
           <div className="flex items-center bg-white/95 dark:bg-[#142028]/95 border border-[#DCE4E8] dark:border-[#243542] rounded-lg p-0.5 shadow-xl backdrop-blur-md">
             <button
               onClick={() => {
@@ -913,10 +924,8 @@ export const CADEditor: React.FC<CADEditorProps> = ({
               </span>
             </button>
           </div>
-        )}
 
-        {/* Control de Modo de Trazado (Ortogonal a 90° vs Bézier Curvo) */}
-        {!is3DView && (
+          {/* Control de Modo de Trazado (Ortogonal a 90° vs Bézier Curvo) */}
           <div className="flex items-center bg-white/95 dark:bg-[#142028]/95 border border-[#DCE4E8] dark:border-[#243542] rounded-lg p-0.5 shadow-xl backdrop-blur-md">
             <button
               onClick={() => setRoutingMode((m) => (m === 'orthogonal' ? 'bezier' : 'orthogonal'))}
@@ -932,33 +941,33 @@ export const CADEditor: React.FC<CADEditorProps> = ({
               <strong className="text-[#167D78] dark:text-[#2DD4BF] capitalize">{routingMode === 'orthogonal' ? 'Ortogonal' : 'Curvo'}</strong>
             </button>
           </div>
-        )}
 
-        {/* Botón de Ficha de Conductor cuando hay un cable seleccionado */}
-        {!is3DView && selectedElementType === 'wire' && selectedElementId && (
+          {/* Botón de Ficha de Conductor cuando hay un cable seleccionado */}
+          {selectedElementType === 'wire' && selectedElementId && (
+            <button
+              onClick={() => setIsConductorModalOpen(true)}
+              className="px-2.5 py-1 bg-[#167D78] text-white hover:bg-[#0F5E5A] font-bold text-xs rounded-lg shadow-xl backdrop-blur-md flex items-center gap-1.5 transition-all"
+              title="Abrir ficha técnica de dimensionamiento y normas AEA del conductor seleccionado"
+            >
+              <Zap className="w-3.5 h-3.5" />
+              <span>Ficha Conductor</span>
+            </button>
+          )}
+
+          {/* Botón de Ficha Educativa con Normas */}
           <button
-            onClick={() => setIsConductorModalOpen(true)}
-            className="px-2.5 py-1 bg-[#167D78] text-white hover:bg-[#0F5E5A] font-bold text-xs rounded-lg shadow-xl backdrop-blur-md flex items-center gap-1.5 transition-all"
-            title="Abrir ficha técnica de dimensionamiento y normas AEA del conductor seleccionado"
+            onClick={() => {
+              const selectedSym = project.symbols.find((s) => s.id === selectedElementId);
+              setLearningType(selectedSym?.type || 'luminaria');
+            }}
+            className="px-2.5 py-1 bg-white/95 dark:bg-[#142028]/95 hover:bg-[#F8FAFC] dark:hover:bg-[#1B2B36] border border-[#DCE4E8] dark:border-[#243542] text-[#167D78] dark:text-[#2DD4BF] text-xs font-semibold rounded-lg shadow-xl backdrop-blur-md flex items-center gap-1.5 transition-all"
+            title="Ver enciclopedia técnica de normas y especificaciones"
           >
-            <Zap className="w-3.5 h-3.5" />
-            <span>Ficha Conductor</span>
+            <BookOpen className="w-3.5 h-3.5 text-[#167D78] dark:text-[#2DD4BF]" />
+            <span className="hidden sm:inline">Enciclopedia</span>
           </button>
-        )}
-
-        {/* Botón de Ficha Educativa con Normas */}
-        <button
-          onClick={() => {
-            const selectedSym = project.symbols.find((s) => s.id === selectedElementId);
-            setLearningType(selectedSym?.type || 'luminaria');
-          }}
-          className="px-2.5 py-1 bg-white/95 dark:bg-[#142028]/95 hover:bg-[#F8FAFC] dark:hover:bg-[#1B2B36] border border-[#DCE4E8] dark:border-[#243542] text-[#167D78] dark:text-[#2DD4BF] text-xs font-semibold rounded-lg shadow-xl backdrop-blur-md flex items-center gap-1.5 transition-all"
-          title="Ver enciclopedia técnica de normas y especificaciones"
-        >
-          <BookOpen className="w-3.5 h-3.5 text-[#167D78] dark:text-[#2DD4BF]" />
-          <span className="hidden sm:inline">Enciclopedia</span>
-        </button>
-      </div>
+        </div>
+      )}
 
       {/* Floating Card: Localizador de Fallas y Cortocircuitos (cuando se detectan fallas activas) */}
       {!is3DView && simState?.activeFaults && simState.activeFaults.length > 0 && !isFaultBannerDismissed && (
@@ -1074,6 +1083,7 @@ export const CADEditor: React.FC<CADEditorProps> = ({
           onToggleSwitch={onToggleSwitch}
           onSelectSymbol={(id) => onSelectElement('symbol', id)}
           onOpenLearningModal={(type) => setLearningType(type)}
+          onToggle3DView={handleSet3DView}
         />
       ) : (
         <>

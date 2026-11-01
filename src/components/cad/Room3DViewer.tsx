@@ -46,6 +46,7 @@ interface Room3DViewerProps {
   onToggleSwitch: (symbolId: string) => void;
   onSelectSymbol?: (symbolId: string) => void;
   onOpenLearningModal?: (symbolType: string) => void;
+  onToggle3DView?: (is3D: boolean) => void;
 }
 
 export type WallDisplayMode = 'solid' | 'translucent' | 'hidden';
@@ -56,6 +57,7 @@ export const Room3DViewer: React.FC<Room3DViewerProps> = ({
   onToggleSwitch,
   onSelectSymbol,
   onOpenLearningModal,
+  onToggle3DView,
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
 
@@ -1263,12 +1265,24 @@ export const Room3DViewer: React.FC<Room3DViewerProps> = ({
       {/* 2. Barra Superior (Top-Left): Identidad, Modos de Vista Reglamentarios (Fase 2) y Capas */}
       <div className="absolute top-3 left-3 right-3 flex flex-wrap items-center justify-between gap-2 z-20 pointer-events-auto">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="px-3 py-1.5 bg-slate-900/90 border border-slate-700/80 rounded-xl shadow-xl backdrop-blur-md flex items-center gap-2">
-            <Box className="w-4 h-4 text-[#167D78] dark:text-[#2DD4BF]" />
-            <span className="text-xs font-bold text-white tracking-wide">ESTUDIO 3D</span>
-            <span className="text-[10px] px-1.5 py-0.5 bg-amber-500/20 text-amber-300 font-mono rounded font-semibold border border-amber-500/30">
-              Escala 1:1 AEA
-            </span>
+          {/* Alternador 2D / 3D directo desde el Visor 3D */}
+          <div className="flex items-center bg-slate-900/90 border border-slate-700/80 rounded-xl p-0.5 shadow-xl backdrop-blur-md">
+            <button
+              onClick={() => onToggle3DView && onToggle3DView(false)}
+              className="px-2.5 py-1 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 text-slate-300 hover:text-white hover:bg-slate-800"
+              title="Regresar inmediatamente al Plano 2D"
+            >
+              <Layers className="w-3.5 h-3.5 text-slate-400" />
+              <span>Plano 2D</span>
+            </button>
+            <button
+              onClick={() => onToggle3DView && onToggle3DView(true)}
+              className="px-2.5 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 bg-[#167D78] text-white shadow-xs"
+              title="Estudio 3D activo"
+            >
+              <Box className="w-3.5 h-3.5 text-[#2DD4BF]" />
+              <span>Estudio 3D</span>
+            </button>
           </div>
 
           {/* Selector de los 6 Modos de Vista Reglamentarios (Fase 2) */}

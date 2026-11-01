@@ -431,7 +431,7 @@ export default function App() {
 
       {/* 3. Área de Contenido Principal según la Pestaña Activa */}
       <main className="flex-1 flex overflow-hidden relative">
-        {activeTab === 'plano' && (
+        {(activeTab === 'plano' || activeTab === 'estudio_3d') && (
           <div className="flex-1 flex w-full h-full relative overflow-hidden">
             {/* Barra lateral de herramientas (Escritorio / Pantallas grandes >= lg) */}
             <div className="hidden lg:flex h-full shrink-0">
@@ -475,6 +475,8 @@ export default function App() {
                 simState={simState}
                 onOpenProperties={() => setIsMobilePropertiesOpen(true)}
                 onResetTool={() => setActiveTool('select')}
+                is3DView={activeTab === 'estudio_3d'}
+                onToggle3DView={(is3D) => setActiveTab(is3D ? 'estudio_3d' : 'plano')}
               />
 
               {/* Selector de tipo de conductor cuando la herramienta activa es cable */}
