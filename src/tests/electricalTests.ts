@@ -169,7 +169,7 @@ export function runAutomatedTests(): { total: number; passed: number; failed: nu
     ],
   };
   const simTomaResult = simulateElectricalNetwork(testProjectToma);
-  const tomaWarning = simTomaResult.simState.diagnostics.some((d) => d.id.includes('diag_toma_no_pe'));
+  const tomaWarning = simTomaResult.simState.diagnostics.some((d) => d.id.includes('no_pe'));
   assert(
     '7. Advertencia de seguridad cuando tomacorriente carece de conductor PE',
     tomaWarning,

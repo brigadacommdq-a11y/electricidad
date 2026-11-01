@@ -1,7 +1,8 @@
 /**
  * ELECTRA PLAN — Servicio Profesional de Detección y Localización de Fallas
  * Localiza con precisión cortocircuitos francos, fallas a tierra, conexiones incorrectas,
- * sobrecargas y circuitos abiertos, determinando el bucle afectado, bornes y disparo de protecciones.
+ * sobrecargas reales y circuitos abiertos, determinando el bucle afectado, bornes y disparo de protecciones.
+ * Cumple estrictamente con la reglamentación AEA 90364 e IRAM 2183.
  */
 
 import { Project, FaultDetail, ElectricalSymbol, Wire, TrippedProtectionDetail } from '../types/electra';
@@ -13,7 +14,7 @@ export function locateAllFaults(project: Project): FaultDetail[] {
 
   const termKey = (compId: string, termId: string) => `${compId}:${termId}`;
 
-  // Adyacencia para rastreo
+  // Adyacencia para rastreo topológico
   interface Edge {
     targetKey: string;
     targetCompId: string;
@@ -40,14 +41,14 @@ export function locateAllFaults(project: Project): FaultDetail[] {
     adj.get(toKey)!.push({ targetKey: fromKey, targetCompId: fromCompId, targetTermId: fromTermId, wireId, isInternal });
   };
 
-  // 1. Agregar cables físicos
+  // 1. Agregar cables físicos instalados
   for (const wire of project.wires) {
     const k1 = termKey(wire.fromComponentId, wire.fromTerminalId);
     const k2 = termKey(wire.toComponentId, wire.toTerminalId);
     addEdge(k1, k2, wire.fromComponentId, wire.fromTerminalId, wire.toComponentId, wire.toTerminalId, wire.id);
   }
 
-  // 2. Agregar puentes internos de componentes (excluyendo cargas con impedancia)
+  // 2. Agregar puentes internos de componentes según estado operativo
   for (const sym of project.symbols) {
     const sState = sym.state || {};
     if (sym.type === 'tablero') {
@@ -56,34 +57,61 @@ export function locateAllFaults(project: Project): FaultDetail[] {
         addEdge(termKey(sym.id, 'N_IN'), termKey(sym.id, 'N_OUT'), sym.id, 'N_IN', sym.id, 'N_OUT', undefined, true);
       }
       addEdge(termKey(sym.id, 'PE_IN'), termKey(sym.id, 'PE_OUT'), sym.id, 'PE_IN', sym.id, 'PE_OUT', undefined, true);
-    } else if (sym.type === 'termica' || sym.type === 'diferencial') {
+    } else if (sym.type === 'termica' || sym.type === 'diferencial' || sym.type === 'interruptor_general') {
+      // Dispositivos de corte: Solo conducen si NO están abiertos ni disparados
       if (!sState.isOpen && !sState.isTripped) {
         addEdge(termKey(sym.id, 'L_IN'), termKey(sym.id, 'L_OUT'), sym.id, 'L_IN', sym.id, 'L_OUT', undefined, true);
         addEdge(termKey(sym.id, 'N_IN'), termKey(sym.id, 'N_OUT'), sym.id, 'N_IN', sym.id, 'N_OUT', undefined, true);
       }
     } else if (sym.type === 'interruptor_simple') {
       if (sState.isOpen === false) {
-        // Cerrado
+        // Cerrado / ON
+        addEdge(termKey(sym.id, 'L'), termKey(sym.id, 'R'), sym.id, 'L', sym.id, 'R', undefined, true);
+      }
+    } else if (sym.type === 'interruptor_doble') {
+      if (sState.isOpen === false) {
+        addEdge(termKey(sym.id, 'L'), termKey(sym.id, 'R1'), sym.id, 'L', sym.id, 'R1', undefined, true);
+      }
+      if (sState.switchPosition === 2 || sState.isOpen === false) {
+        addEdge(termKey(sym.id, 'L'), termKey(sym.id, 'R2'), sym.id, 'L', sym.id, 'R2', undefined, true);
+      }
+    } else if (sym.type === 'conmutado') {
+      const pos = sState.switchPosition || 1;
+      const targetTerm = pos === 1 ? 'P1' : 'P2';
+      addEdge(termKey(sym.id, 'COM'), termKey(sym.id, targetTerm), sym.id, 'COM', sym.id, targetTerm, undefined, true);
+    } else if (sym.type === 'pulsador') {
+      if (sState.isOpen === false) {
         addEdge(termKey(sym.id, 'L'), termKey(sym.id, 'R'), sym.id, 'L', sym.id, 'R', undefined, true);
       }
     } else if (sym.type === 'caja_paso') {
-      // Puentes de continuidad comunes en cajas de derivación
+      // Continuidad en cajas de derivación
       addEdge(termKey(sym.id, 'L_IN'), termKey(sym.id, 'L_OUT'), sym.id, 'L_IN', sym.id, 'L_OUT', undefined, true);
       addEdge(termKey(sym.id, 'N_IN'), termKey(sym.id, 'N_OUT'), sym.id, 'N_IN', sym.id, 'N_OUT', undefined, true);
       addEdge(termKey(sym.id, 'PE_IN'), termKey(sym.id, 'PE_OUT'), sym.id, 'PE_IN', sym.id, 'PE_OUT', undefined, true);
     }
   }
 
-  // Identificar fuentes
+  // Identificar fuentes de alimentación
   const sources = project.symbols.filter((s) => s.type === 'fuente_ac' || s.type === 'tablero');
   if (sources.length === 0) return [];
 
-  // Helper para BFS que busca caminos sin pasar por cargas (resistencias)
+  // Helper esencial: Toda carga de utilización, iluminación o artefacto resistivo/inductivo
+  // posee impedancia interna entre L y N, por lo que NO constituye un cortocircuito.
   const isLoadImpedance = (compId: string, termId: string) => {
     const sym = symbolMap.get(compId);
     if (!sym) return false;
-    // Las luminarias, timbres, extractores tienen impedancia entre L y N
-    return sym.type === 'luminaria' || sym.type === 'timbre' || sym.type === 'ventilador';
+    if (sym.category === 'utilizacion' || sym.type === 'luminaria') return true;
+    if ((sym.powerWatts || 0) > 0) return true;
+    return sym.type === 'luminaria' || sym.type === 'timbre' || sym.type === 'ventilador' || sym.type === 'termotanque';
+  };
+
+  // Helper: Comprobar si un componente tiene cables físicos conectados
+  const hasPhysicalWiresConnected = (compId: string, terminalIds?: string[]) => {
+    return project.wires.some((w) => {
+      const matchFrom = w.fromComponentId === compId && (!terminalIds || terminalIds.includes(w.fromTerminalId));
+      const matchTo = w.toComponentId === compId && (!terminalIds || terminalIds.includes(w.toTerminalId));
+      return matchFrom || matchTo;
+    });
   };
 
   // Rastrear desde cada fuente
@@ -93,7 +121,7 @@ export function locateAllFaults(project: Project): FaultDetail[] {
     const peStart = src.type === 'tablero' ? termKey(src.id, 'PE_OUT') : termKey(src.id, 'PE');
 
     // =========================================================================
-    // A. DETECCIÓN DE CORTOCIRCUITO FRANCO (L -> N sin carga intermedia)
+    // A. DETECCIÓN DE CORTOCIRCUITO FRANCO (L -> N directo sin carga)
     // =========================================================================
     if (lStart && nStart) {
       const visited = new Set<string>();
@@ -114,10 +142,10 @@ export function locateAllFaults(project: Project): FaultDetail[] {
 
         const edges = adj.get(curr) || [];
         for (const edge of edges) {
-          // Si es una carga y cruzamos de L a N internamente, NO es cortocircuito
+          // Si es una carga de utilización/iluminación y se cruza internamente entre sus bornes, NO es cortocircuito
           const [currComp] = curr.split(':');
           if (isLoadImpedance(currComp, edge.targetTermId) && edge.isInternal) {
-            continue; // La impedancia frena el cortocircuito
+            continue; // La impedancia real absorbe la tensión
           }
 
           if (!visited.has(edge.targetKey)) {
@@ -151,40 +179,48 @@ export function locateAllFaults(project: Project): FaultDetail[] {
         const [srcComp] = lStart.split(':');
         involvedComps.add(srcComp);
 
-        // Coordenadas para zoom: centroide de los componentes involucrados
-        const coords = calculateCentroid(Array.from(involvedComps), symbolMap);
+        // Identificar qué protección termomagnética específica está en la rama del corto
+        let specificBreaker: ElectricalSymbol | undefined;
+        for (const compId of involvedComps) {
+          const sym = symbolMap.get(compId);
+          if (sym && (sym.type === 'termica' || sym.type === 'interruptor_general')) {
+            specificBreaker = sym;
+            break;
+          }
+        }
 
-        // Componentes origen y destino del tramo
+        const coords = calculateCentroid(Array.from(involvedComps), symbolMap);
         const compNames = Array.from(involvedComps)
           .map((id) => symbolMap.get(id)?.name || id)
           .slice(0, 3)
           .join(', ');
 
+        const breakerLabel = specificBreaker?.label || 'PIA General';
         const trippedProtection: TrippedProtectionDetail = {
           deviceType: 'PIA_TERMOMAGNETICA',
-          nominalRating: 'Curva C (5 a 10 x In)',
+          nominalRating: specificBreaker ? `${specificBreaker.label} (Curva C)` : 'Curva C (5 a 10 x In)',
           tripMechanism: 'DISPARO_MAGNETICO_INSTANTANEO',
           responseTimeMs: 15,
-          statusText: 'Disparo magnético instantáneo en menos de 20 ms por sobrecorriente severa (Icc > 1500 A).',
+          statusText: `Disparo magnético instantáneo en < 20 ms de ${breakerLabel} por corriente de cortocircuito franca (Icc > 1500 A).`,
         };
 
         faults.push({
           id: `fault_cc_${src.id}`,
           category: 'cortocircuito_franco',
           severity: 'peligro_inmediato',
-          title: 'Cortocircuito Franco Fase-Neutro (L-N)',
-          faultLoopDescription: `Bucle cerrado de resistencia nula entre Fase y Neutro involucrando: ${compNames}.`,
-          detectionReason: `Se detectó continuidad directa galvánica entre el borne de Fase y el borne de Neutro sin pasar por la impedancia de una carga. La impedancia del bucle es inferior a 0,08 Ω.`,
-          fromComponentId: src.id,
+          title: `Cortocircuito Franco Fase-Neutro (L-N) — Disparo de ${breakerLabel}`,
+          faultLoopDescription: `Bucle cerrado de resistencia nula entre Fase y Neutro afectando: ${compNames}.`,
+          detectionReason: `Se detectó continuidad galvánica directa entre Fase y Neutro sin intercalar una carga con resistencia o impedancia admisible. La termomagnética ${breakerLabel} actuó para evitar el incendio de conductores.`,
+          fromComponentId: specificBreaker?.id || src.id,
           involvedWireIds: involvedWires,
           involvedComponentIds: Array.from(involvedComps),
           involvedTerminalKeys: involvedTerms,
           trippedProtection,
           remedySteps: [
-            '1. Desconecta de inmediato la alimentación general antes de manipular.',
-            '2. Revisa las uniones en los componentes resaltados en rojo.',
-            '3. Verifica que la Fase llegue al interruptor o bornera y NO al retorno o neutro directo.',
-            '4. Elimina cualquier puente o cable indebido conectado directamente entre L y N.',
+            '1. La térmica se ha disparado automáticamente para proteger la instalación.',
+            '2. Desconecta o corrige el cable que une directamente Fase con Neutro en el tramo resaltado en rojo.',
+            '3. Verifica que la Fase llegue al interruptor o bornera y el Neutro a la carga.',
+            '4. Una vez eliminado el puente indebido, podrás rearmar la térmica con un clic.',
           ],
           coordinates: coords,
         });
@@ -255,25 +291,26 @@ export function locateAllFaults(project: Project): FaultDetail[] {
           nominalRating: 'ID 40A / 30mA (Clase AC o A)',
           tripMechanism: 'DISPARO_DIFERENCIAL_RESIDUAL_30mA',
           responseTimeMs: 25,
-          statusText: 'Disparo por corriente de fuga a tierra superior al umbral de seguridad de 30 mA (IΔn).',
+          statusText: 'Disparo del disyuntor diferencial en 25 ms por fuga a tierra superior a 30 mA (IΔn).',
         };
 
         faults.push({
           id: `fault_earth_${src.id}`,
           category: 'falla_tierra',
           severity: 'peligro_inmediato',
-          title: 'Falla de Aislación Directa a Tierra (L-PE)',
+          title: 'Falla a Tierra (L-PE) — Disparo Inmediato del Diferencial (30 mA)',
           faultLoopDescription: `Contacto involuntario de Fase hacia la red de protección PE o masa metálica.`,
-          detectionReason: `Existe conducción galvánica entre Fase viva y el conductor de protección PE. Esto causaría electrificación de masas metálicas si no actuara el interruptor diferencial.`,
+          detectionReason: `Existe conducción galvánica entre Fase viva y el conductor de protección PE. El disyuntor diferencial disparó inmediatamente protegiendo a las personas contra electrocución.`,
           fromComponentId: src.id,
           involvedWireIds: involvedWires,
           involvedComponentIds: Array.from(involvedComps),
           involvedTerminalKeys: involvedTerms,
           trippedProtection,
           remedySteps: [
-            '1. Inspecciona el tramo resaltado para encontrar cables de Fase rozando o conectados a bornes de tierra (PE).',
-            '2. Asegura que los bornes de tierra sólo reciban conductores verde-amarillo conectados a la jabalina.',
-            '3. Verifica el aislamiento entre conductores antes de rearmar el diferencial.',
+            '1. El interruptor diferencial ha actuado por corriente residual de fuga.',
+            '2. Revisa el tramo resaltado para desvincular el conductor de Fase del borne de tierra PE.',
+            '3. Asegura que los bornes PE sólo se conecten a la jabalina mediante cable verde-amarillo.',
+            '4. Tras corregir la fuga, rearma la palanca del diferencial para reanudar el servicio.',
           ],
           coordinates: coords,
         });
@@ -283,12 +320,11 @@ export function locateAllFaults(project: Project): FaultDetail[] {
 
   // =========================================================================
   // C. DETECCIÓN DE CONEXIÓN INCORRECTA PELIGROSA:
-  //    1. Interruptor que corta el NEUTRO en lugar de la FASE (violación crítica AEA 90364)
+  //    1. Interruptor que corta el NEUTRO en lugar de la FASE
   // =========================================================================
   for (const sym of project.symbols) {
     if (sym.category === 'comando' && (sym.type === 'interruptor_simple' || sym.type === 'conmutado')) {
       const lTermKey = termKey(sym.id, 'L');
-      // Ver qué cables llegan al borne de entrada del interruptor
       const incomingEdges = adj.get(lTermKey) || [];
       for (const edge of incomingEdges) {
         if (edge.wireId) {
@@ -308,7 +344,7 @@ export function locateAllFaults(project: Project): FaultDetail[] {
               remedySteps: [
                 '1. Cambia el cable que alimenta este interruptor por un conductor de Fase (marrón o negro).',
                 '2. Conecta el Neutro (celeste) directamente al terminal N de la lámpara sin pasar por la tecla.',
-                '3. Desde la tecla, lleva el cable de Retorno hacia el borne L de la luminaria.',
+                '3. Desde la tecla, lleva el cable de Retorno (violeta/gris) hacia el borne L de la luminaria.',
               ],
               coordinates: { x: sym.x, y: sym.y },
             });
@@ -318,17 +354,23 @@ export function locateAllFaults(project: Project): FaultDetail[] {
     }
 
     // 2. Tomacorrientes sin borne de tierra PE conectado
+    // REGLA CRÍTICA: Solo advertir si el tomacorriente está EFECTIVAMENTE conectado a la red viva (L y N cableados).
+    // Si es un artefacto o tomacorriente suelto sin cables, NO debe generar errores.
     if (sym.type === 'tomacorriente' || sym.type === 'toma_especial') {
-      const peKey = termKey(sym.id, 'PE');
-      const peEdges = (adj.get(peKey) || []).filter((e) => !e.isInternal);
-      if (peEdges.length === 0) {
+      const hasLWire = hasPhysicalWiresConnected(sym.id, ['L']);
+      const hasNWire = hasPhysicalWiresConnected(sym.id, ['N']);
+      const hasPEWire = hasPhysicalWiresConnected(sym.id, ['PE']);
+
+      // Solo si está conectado a la red eléctrica sin tierra
+      if ((hasLWire || hasNWire) && !hasPEWire) {
+        const peKey = termKey(sym.id, 'PE');
         faults.push({
           id: `fault_no_pe_${sym.id}`,
           category: 'conexion_peligrosa',
           severity: 'advertencia_normativa',
           title: `Tomacorriente ${sym.label} sin Puesta a Tierra (PE)`,
-          faultLoopDescription: `El tomacorriente "${sym.name}" no cuenta con conexión de protección equipotencial.`,
-          detectionReason: `La norma AEA 90364 exige que todo tomacorriente tipo IRAM 2071 de 3 espigas planas cuente con conductor de protección PE verde-amarillo de sección mínima 2,5 mm² conectado a la jabalina de puesta a tierra.`,
+          faultLoopDescription: `El tomacorriente "${sym.name}" está cableado a la línea pero carece de conexión de protección equipotencial.`,
+          detectionReason: `La norma AEA 90364 exige que todo tomacorriente tipo IRAM 2071 de 3 espigas planas cuente obligatoriamente con conductor de protección PE verde-amarillo de sección mínima 2,5 mm² conectado a la jabalina de puesta a tierra.`,
           fromComponentId: sym.id,
           involvedWireIds: [],
           involvedComponentIds: [sym.id],
@@ -344,25 +386,128 @@ export function locateAllFaults(project: Project): FaultDetail[] {
   }
 
   // =========================================================================
-  // D. DETECCIÓN DE SOBRECARGA EN CIRCUITOS (Ib > In)
+  // D. VALIDACIONES EDUCATIVAS DE CÓDIGO DE COLORES (IRAM 2183 / AEA 90364)
   // =========================================================================
+  for (const wire of project.wires) {
+    const fromSym = symbolMap.get(wire.fromComponentId);
+    const toSym = symbolMap.get(wire.toComponentId);
+    if (!fromSym || !toSym) continue;
+
+    // Regla 1: El conductor Celeste está prohibido para Fases o Retornos
+    const isCeleste = wire.type === 'neutro' || wire.color === '#0284c7';
+    const isConnectedToPhase =
+      wire.fromTerminalId === 'L' ||
+      wire.toTerminalId === 'L' ||
+      wire.fromTerminalId === 'R' ||
+      wire.toTerminalId === 'R' ||
+      wire.fromTerminalId === 'COM' ||
+      wire.toTerminalId === 'COM';
+
+    if (isCeleste && isConnectedToPhase && fromSym.category === 'comando') {
+      faults.push({
+        id: `fault_color_celeste_fase_${wire.id}`,
+        category: 'conexion_peligrosa',
+        severity: 'advertencia_normativa',
+        title: `Uso Indebido de Conductor Celeste como Activo (IRAM 2183)`,
+        faultLoopDescription: `Se ha utilizado un conductor celeste para alimentar o conmutar una fase en ${fromSym.name}.`,
+        detectionReason: `Por norma IRAM 2183 y AEA 90364-771, el color CELESTE está reservado exclusivamente para el conductor NEUTRO. Queda terminantemente prohibido utilizarlo como fase viva, retorno o puente, ya que genera confusión letal durante el mantenimiento.`,
+        involvedWireIds: [wire.id],
+        involvedComponentIds: [fromSym.id, toSym.id],
+        involvedTerminalKeys: [`${fromSym.id}:${wire.fromTerminalId}`],
+        remedySteps: [
+          '1. Selecciona el cable en el plano.',
+          '2. Cambia su tipo a FASE (marrón o negro) o RETORNO (violeta/gris) según corresponda.',
+        ],
+        coordinates: { x: (fromSym.x + toSym.x) / 2, y: (fromSym.y + toSym.y) / 2 },
+      });
+    }
+
+    // Regla 2: El conductor Verde-Amarillo es EXCLUSIVO para Puesta a Tierra (PE)
+    const isGreenYellow = wire.type === 'tierra' || wire.color === '#16a34a' || wire.color === '#15803d';
+    const isConnectedToActiveTerminal =
+      wire.fromTerminalId === 'L' ||
+      wire.toTerminalId === 'L' ||
+      wire.fromTerminalId === 'N' ||
+      wire.toTerminalId === 'N' ||
+      wire.fromTerminalId === 'R' ||
+      wire.toTerminalId === 'R';
+
+    if (isGreenYellow && isConnectedToActiveTerminal) {
+      faults.push({
+        id: `fault_color_pe_activo_${wire.id}`,
+        category: 'conexion_peligrosa',
+        severity: 'peligro_inmediato',
+        title: `¡RIESGO GRAVE! Conductor Verde-Amarillo (PE) usado como Conductor Activo`,
+        faultLoopDescription: `El conductor de puesta a tierra está conectado a un terminal de Fase o Neutro en ${fromSym.name}.`,
+        detectionReason: `La combinación de colores VERDE-AMARILLO no debe utilizarse en ningún caso para otra función que no sea la de conductor de protección (PE). Conectarlo como conductor activo genera riesgo extremo de electrificar carcasas metálicas y provocar choques eléctricos fatales.`,
+        involvedWireIds: [wire.id],
+        involvedComponentIds: [fromSym.id, toSym.id],
+        involvedTerminalKeys: [`${fromSym.id}:${wire.fromTerminalId}`],
+        remedySteps: [
+          '1. Desconecta de inmediato este cable de los terminales activos L o N.',
+          '2. Conéctalo únicamente a los bornes de tierra (PE) y a la jabalina.',
+          '3. Utiliza conductores marrón/negro/rojo para fases y celeste para neutro.',
+        ],
+        coordinates: { x: (fromSym.x + toSym.x) / 2, y: (fromSym.y + toSym.y) / 2 },
+      });
+    }
+  }
+
+  // =========================================================================
+  // E. DETECCIÓN DE SOBRECARGA REAL EN CIRCUITOS (Ib > In)
+  // =========================================================================
+  // REGLAS FUNDAMENTALES:
+  // 1. Un elemento colocado sin cables físicos está DESCONECTADO (P = 0 W, I = 0 A).
+  // 2. Si la térmica del circuito está abierta o disparada, la corriente es 0 A.
+  // 3. Solo se suman los artefactos que tienen cables conectados a terminales L y N.
   for (const circ of project.circuits) {
     const breakerAmps = circ.breakerAmps || 16;
-    const circuitSymbols = project.symbols.filter((s) => s.circuitId === circ.id);
-    const totalWatts = circuitSymbols.reduce((sum, s) => sum + (s.powerWatts || 0), 0);
-    const designAmps = totalWatts / (circ.voltage || 220);
 
-    if (designAmps > breakerAmps) {
+    // Buscar si existe una térmica específica en el plano para este circuito
+    const circuitBreakerSym = project.symbols.find(
+      (s) => (s.type === 'termica' || s.category === 'proteccion') && s.circuitId === circ.id
+    );
+
+    // Buscar el componente correspondiente en el tablero de distribución
+    const switchboardBreaker = project.switchboard?.components?.find(
+      (c) => c.circuitId === circ.id || c.name.includes(circ.id)
+    );
+
+    // Si la protección del circuito está abierta manualmente o ya disparada, la corriente activa es 0
+    const isCircuitOpenOrTripped =
+      circuitBreakerSym?.state?.isOpen === true ||
+      circuitBreakerSym?.state?.isTripped === true ||
+      switchboardBreaker?.state === 'open' ||
+      switchboardBreaker?.state === 'tripped';
+
+    if (isCircuitOpenOrTripped) {
+      continue; // Circuito desenergizado = 0 A, no genera sobrecarga activa
+    }
+
+    // Filtrar símbolos del circuito que estén EFECTIVAMENTE CONECTADOS con cables físicos
+    const connectedCircuitSymbols = project.symbols.filter((s) => {
+      if (s.circuitId !== circ.id) return false;
+      if (s.category !== 'utilizacion' && s.type !== 'luminaria') return false;
+      // Debe tener cables físicos conectados a sus terminales de consumo
+      const hasL = hasPhysicalWiresConnected(s.id, ['L', 'L_IN']);
+      const hasN = hasPhysicalWiresConnected(s.id, ['N', 'N_IN']);
+      return hasL && hasN;
+    });
+
+    const totalActiveWatts = connectedCircuitSymbols.reduce((sum, s) => sum + (s.powerWatts || 0), 0);
+    const designAmps = totalActiveWatts / (circ.voltage || 220);
+
+    if (designAmps > breakerAmps && totalActiveWatts > 0) {
       const trippedProtection: TrippedProtectionDetail = {
         deviceType: 'PIA_TERMOMAGNETICA',
         nominalRating: `${circ.breakerCurve || 'C'}${breakerAmps} (${breakerAmps} A)`,
         tripMechanism: 'DISPARO_TERMICO_RETARDADO',
         responseTimeMs: 45000,
-        statusText: `Disparo bimetálico térmico por sobrecarga sostenida (Ib=${designAmps.toFixed(1)} A > In=${breakerAmps} A).`,
+        statusText: `Disparo bimetálico térmico en ${circ.id} por sobrecarga sostenida (Ib=${designAmps.toFixed(1)} A > In=${breakerAmps} A).`,
       };
 
       const coords = calculateCentroid(
-        circuitSymbols.map((s) => s.id),
+        connectedCircuitSymbols.map((s) => s.id),
         symbolMap
       );
 
@@ -370,17 +515,18 @@ export function locateAllFaults(project: Project): FaultDetail[] {
         id: `fault_overload_${circ.id}`,
         category: 'sobrecarga',
         severity: 'advertencia_normativa',
-        title: `Sobrecarga en Circuito ${circ.name} (${circ.id})`,
-        faultLoopDescription: `La corriente de diseño calculada (${designAmps.toFixed(1)} A) supera la capacidad asignada del interruptor termomagnético (${breakerAmps} A).`,
-        detectionReason: `La carga instalada suma ${totalWatts} W, excediendo la corriente admisible del dispositivo de protección, lo que provocará sobrecalentamiento en los conductores y disparo térmico por bimetal de la termomagnética.`,
+        title: `Sobrecarga Activa en Circuito ${circ.name} (${circ.id})`,
+        faultLoopDescription: `La corriente real demandada por los artefactos conectados (${designAmps.toFixed(1)} A) supera la capacidad asignada del interruptor termomagnético (${breakerAmps} A).`,
+        detectionReason: `Los artefactos efectivamente cableados al circuito suman ${totalActiveWatts} W, excediendo la corriente admisible de la térmica de ${breakerAmps} A. Esto sobrecalentará los conductores de ${circ.crossSectionMm2 || 2.5} mm² y provocará el disparo térmico por bimetal.`,
+        fromComponentId: circuitBreakerSym?.id,
         involvedWireIds: project.wires.filter((w) => w.circuitId === circ.id).map((w) => w.id),
-        involvedComponentIds: circuitSymbols.map((s) => s.id),
+        involvedComponentIds: connectedCircuitSymbols.map((s) => s.id),
         involvedTerminalKeys: [],
         trippedProtection,
         remedySteps: [
-          '1. Divide las cargas en dos o más circuitos independientes según AEA 771.',
-          '2. Si la sección de los conductores lo permite reglamentariamente, adecua la capacidad del interruptor.',
-          '3. Recuerda coordinar siempre: Ib <= In <= Iz.',
+          '1. Divide los artefactos de alto consumo en circuitos independientes según AEA 771.',
+          '2. Para artefactos de uso especial (soldadoras, bombas, termotanques), asígnales un circuito TUE o circuito exclusivo.',
+          '3. Recuerda coordinar siempre según la regla de oro: Ib <= In <= Iz.',
         ],
         coordinates: coords,
       });

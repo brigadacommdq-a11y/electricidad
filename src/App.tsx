@@ -268,24 +268,84 @@ export default function App() {
     });
   }, [updateProject]);
 
-  // Alternar protección (térmica / diferencial en el plano)
+  // Alternar protección (térmica / diferencial / IGA en el plano o tablero)
   const handleToggleBreaker = useCallback((symbolId: string) => {
     updateProject((prev) => {
+      let toggledCircuitId: string | undefined;
+      let nextClosedState = false;
+
+      // 1. Actualizar en symbols si es un símbolo en el plano
       const nextSymbols = prev.symbols.map((sym) => {
         if (sym.id === symbolId) {
-          const isClosed = !sym.state?.isOpen && !sym.state?.isTripped;
+          toggledCircuitId = sym.circuitId;
+          // Si estaba disparada por falla o abierta manual, se rearma/sube a ON (isOpen: false)
+          const willBeClosed = sym.state?.isTripped || sym.state?.isOpen;
+          nextClosedState = Boolean(willBeClosed);
+
           return {
             ...sym,
             state: {
               ...sym.state,
-              isOpen: isClosed,
-              isTripped: false,
+              isOpen: !willBeClosed,
+              isTripped: false, // Rearme individual
             },
           };
         }
         return sym;
       });
-      return { ...prev, symbols: nextSymbols };
+
+      // 2. Sincronizar con los componentes del tablero (switchboard.components)
+      const nextSwitchboardComps = prev.switchboard?.components?.map((c) => {
+        const matchesDirectly = c.id === symbolId;
+        const matchesCircuit = toggledCircuitId && (c.circuitId === toggledCircuitId || c.name.includes(toggledCircuitId));
+
+        if (matchesDirectly) {
+          const willBeClosed = c.state !== 'closed';
+          // Si el ID era del tablero, actualizar también símbolos que compartan circuitId
+          if (c.circuitId) {
+            toggledCircuitId = c.circuitId;
+            nextClosedState = willBeClosed;
+          }
+          return {
+            ...c,
+            state: willBeClosed ? ('closed' as const) : ('open' as const),
+          };
+        }
+
+        if (matchesCircuit) {
+          return {
+            ...c,
+            state: nextClosedState ? ('closed' as const) : ('open' as const),
+          };
+        }
+
+        return c;
+      }) || [];
+
+      // Si el ID original era de un componente del tablero, reflejarlo en los símbolos asociados
+      const finalSymbols = toggledCircuitId
+        ? nextSymbols.map((sym) =>
+            sym.circuitId === toggledCircuitId && (sym.type === 'termica' || sym.category === 'proteccion')
+              ? {
+                  ...sym,
+                  state: {
+                    ...sym.state,
+                    isOpen: !nextClosedState,
+                    isTripped: false,
+                  },
+                }
+              : sym
+          )
+        : nextSymbols;
+
+      return {
+        ...prev,
+        symbols: finalSymbols,
+        switchboard: {
+          ...prev.switchboard,
+          components: nextSwitchboardComps,
+        },
+      };
     });
   }, [updateProject]);
 
@@ -402,6 +462,7 @@ export default function App() {
                   setSelectedElementId(id);
                 }}
                 onToggleSwitch={handleToggleSwitch}
+                onToggleBreaker={handleToggleBreaker}
                 isSimulating={true}
                 simState={simState}
                 onOpenProperties={() => setIsMobilePropertiesOpen(true)}

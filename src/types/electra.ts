@@ -269,15 +269,31 @@ export interface SimulationState {
 }
 
 // Aula de prácticas
+export type PracticeCategory =
+  | 'fundamentos'
+  | 'domesticas'
+  | 'tableros'
+  | 'calculos'
+  | 'diagnostico'
+  | 'talleres';
+
 export interface PracticeLevel {
   id: number;
+  category?: PracticeCategory;
+  categoryName?: string;
   title: string;
   difficulty: 'Principiante' | 'Intermedio' | 'Avanzado';
   objective: string;
   description: string;
+  prerequisites?: string[];
+  inputsAndAssumptions?: string[];
   componentsNeeded: string[];
   instructions: string[];
+  studentActions?: string[];
   hints: string[];
+  expectedOutcome?: string;
+  keyLearnings?: string[];
+  errorTroubleshooting?: string[];
   initialProject: Partial<Project>;
   solutionCheck: (project: Project, sim: SimulationState) => { passed: boolean; feedback: string; missingConnections?: string[] };
 }

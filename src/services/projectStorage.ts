@@ -23,6 +23,26 @@ const STORAGE_PREFIX = 'electra_plan_proj_';
 const ACTIVE_PROJ_ID_KEY = 'electra_plan_active_id_v1';
 export const DEMO_PROJECT_ID = 'demo_vivienda_2amb';
 
+const memoryStore: Record<string, string> = {};
+
+function getSafeStorage() {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    return window.localStorage;
+  }
+  return {
+    getItem: (key: string) => memoryStore[key] || null,
+    setItem: (key: string, val: string) => {
+      memoryStore[key] = val;
+    },
+    removeItem: (key: string) => {
+      delete memoryStore[key];
+    },
+    clear: () => {
+      Object.keys(memoryStore).forEach((k) => delete memoryStore[k]);
+    },
+  };
+}
+
 /**
  * Crea un proyecto completamente vacío desde cero sin ninguna habitación ni bocas heredadas.
  */
@@ -122,7 +142,7 @@ export function createEmptyProject(name = 'Nueva Vivienda en Blanco', client = '
 export function getSavedProjectsList(): ProjectMetadataSummary[] {
   let list: ProjectMetadataSummary[] = [];
   try {
-    const raw = localStorage.getItem(STORAGE_INDEX_KEY);
+    const raw = getSafeStorage().getItem(STORAGE_INDEX_KEY);
     if (raw) {
       list = JSON.parse(raw);
     }
@@ -145,7 +165,7 @@ export function getSavedProjectsList(): ProjectMetadataSummary[] {
       isTemplate: true,
     });
     try {
-      localStorage.setItem(STORAGE_INDEX_KEY, JSON.stringify(list));
+      getSafeStorage().setItem(STORAGE_INDEX_KEY, JSON.stringify(list));
     } catch {}
   }
 
@@ -158,8 +178,8 @@ export function getSavedProjectsList(): ProjectMetadataSummary[] {
 export function saveProjectToStorage(proj: Project): void {
   try {
     const key = `${STORAGE_PREFIX}${proj.metadata.id}`;
-    localStorage.setItem(key, JSON.stringify(proj));
-    localStorage.setItem(ACTIVE_PROJ_ID_KEY, proj.metadata.id);
+    getSafeStorage().setItem(key, JSON.stringify(proj));
+    getSafeStorage().setItem(ACTIVE_PROJ_ID_KEY, proj.metadata.id);
 
     // Actualizar índice
     const list = getSavedProjectsList();
@@ -182,7 +202,7 @@ export function saveProjectToStorage(proj: Project): void {
       list.unshift(summary);
     }
 
-    localStorage.setItem(STORAGE_INDEX_KEY, JSON.stringify(list));
+    getSafeStorage().setItem(STORAGE_INDEX_KEY, JSON.stringify(list));
   } catch (err) {
     console.error('Error al guardar proyecto en storage:', err);
   }
@@ -195,7 +215,7 @@ export function loadProjectFromStorage(id: string): Project | null {
   if (id === DEMO_PROJECT_ID) {
     // Si hay una copia personalizada guardada la devuelve, si no crea una fresca
     try {
-      const saved = localStorage.getItem(`${STORAGE_PREFIX}${DEMO_PROJECT_ID}`);
+      const saved = getSafeStorage().getItem(`${STORAGE_PREFIX}${DEMO_PROJECT_ID}`);
       if (saved) return JSON.parse(saved);
     } catch {}
     const demo = createDemoProject();
@@ -205,7 +225,7 @@ export function loadProjectFromStorage(id: string): Project | null {
   }
 
   try {
-    const raw = localStorage.getItem(`${STORAGE_PREFIX}${id}`);
+    const raw = getSafeStorage().getItem(`${STORAGE_PREFIX}${id}`);
     if (raw) {
       return JSON.parse(raw);
     }
@@ -220,13 +240,13 @@ export function loadProjectFromStorage(id: string): Project | null {
  */
 export function deleteProjectFromStorage(id: string): boolean {
   if (id === DEMO_PROJECT_ID) {
-    alert('La plantilla de demostración no puede ser eliminada.');
+    console.warn('La plantilla de demostración no puede ser eliminada.');
     return false;
   }
   try {
-    localStorage.removeItem(`${STORAGE_PREFIX}${id}`);
+    getSafeStorage().removeItem(`${STORAGE_PREFIX}${id}`);
     const list = getSavedProjectsList().filter((p) => p.id !== id);
-    localStorage.setItem(STORAGE_INDEX_KEY, JSON.stringify(list));
+    getSafeStorage().setItem(STORAGE_INDEX_KEY, JSON.stringify(list));
     return true;
   } catch (e) {
     console.error('Error al eliminar proyecto:', e);
@@ -255,7 +275,7 @@ export function duplicateProjectInStorage(sourceId: string): Project | null {
  */
 export function getActiveProjectId(): string {
   try {
-    const activeId = localStorage.getItem(ACTIVE_PROJ_ID_KEY);
+    const activeId = getSafeStorage().getItem(ACTIVE_PROJ_ID_KEY);
     if (activeId) return activeId;
   } catch {}
   return DEMO_PROJECT_ID;

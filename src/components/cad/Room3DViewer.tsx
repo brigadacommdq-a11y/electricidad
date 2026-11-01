@@ -980,10 +980,26 @@ export const Room3DViewer: React.FC<Room3DViewerProps> = ({
       metalness: 0.1,
     });
 
-    const phaseWireMat = new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.3 }); // Marrón Fase
-    const neutralWireMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3 }); // Celeste Neutro
-    const earthWireMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.3 }); // Verde Tierra PE
-    const returnWireMat = new THREE.MeshStandardMaterial({ color: 0xa855f7, roughness: 0.3 }); // Violeta Retorno
+    const phaseWireMat = new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.3 }); // Marrón Fase L1
+    const neutralWireMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3 }); // Celeste Neutro N
+    const returnWireMat = new THREE.MeshStandardMaterial({ color: 0xa855f7, roughness: 0.3 }); // Violeta Retorno R
+
+    // Textura procedural bicolor verde-amarilla para conductor PE según IRAM 2183
+    const peCanvas = document.createElement('canvas');
+    peCanvas.width = 64;
+    peCanvas.height = 64;
+    const peCtx = peCanvas.getContext('2d');
+    if (peCtx) {
+      peCtx.fillStyle = '#facc15'; // Amarillo base
+      peCtx.fillRect(0, 0, 64, 64);
+      peCtx.fillStyle = '#15803d'; // Verde reglamentario
+      peCtx.fillRect(0, 0, 32, 64);
+    }
+    const peTexture = new THREE.CanvasTexture(peCanvas);
+    peTexture.wrapS = THREE.RepeatWrapping;
+    peTexture.wrapT = THREE.RepeatWrapping;
+    peTexture.repeat.set(16, 1);
+    const earthWireMat = new THREE.MeshStandardMaterial({ map: peTexture, roughness: 0.35 });
 
     project.wires.forEach((wire) => {
       // Si la capa de puesta a tierra está oculta y el cable es tierra, omitir

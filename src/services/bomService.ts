@@ -307,3 +307,17 @@ export function generateBOM(project: Project, marginPercent: number = 15): BOMIt
 
   return items;
 }
+
+/**
+ * Exporta el cómputo métrico de materiales a formato CSV delimitado por punto y coma
+ */
+export function exportBOMToCSV(items: BOMItem[]): string {
+  let csv = 'Categoría;Ítem;Descripción;Cantidad;Unidad;Precio Unitario;Subtotal\n';
+  let total = 0;
+  for (const item of items) {
+    csv += `"${item.category}";"${item.name}";"${item.description}";${item.quantity};"${item.unit}";${item.unitPrice};${item.subtotal}\n`;
+    total += item.subtotal;
+  }
+  csv += `;;;;;"TOTAL ESTIMADO";${total}\n`;
+  return csv;
+}

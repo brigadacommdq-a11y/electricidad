@@ -28,6 +28,7 @@ import {
   GitBranch,
   FlipHorizontal,
   Sliders,
+  Palette,
 } from 'lucide-react';
 import {
   Project,
@@ -46,6 +47,7 @@ import { Room3DViewer } from './cad/Room3DViewer';
 import { ComponentLearningModal } from './ComponentLearningModal';
 import { PhysicalComponentCard } from './PhysicalComponentCard';
 import { ConductorSpecificationModal } from './ConductorSpecificationModal';
+import { WireColorReferenceModal } from './WireColorReferenceModal';
 import { calculateOrthogonalPath, pointsToSVGPath } from '../services/orthogonalRouting';
 
 interface CADEditorProps {
@@ -59,6 +61,7 @@ interface CADEditorProps {
   selectedElementType: 'symbol' | 'wire' | 'room' | 'wall' | 'door' | 'window' | null;
   onSelectElement: (type: 'symbol' | 'wire' | 'room' | 'wall' | 'door' | 'window' | null, id: string | null) => void;
   onToggleSwitch: (symbolId: string) => void;
+  onToggleBreaker?: (symbolId: string) => void;
   isSimulating: boolean;
   simState?: SimulationState;
   onOpenProperties?: () => void;
@@ -76,6 +79,7 @@ export const CADEditor: React.FC<CADEditorProps> = ({
   selectedElementType,
   onSelectElement,
   onToggleSwitch,
+  onToggleBreaker,
   isSimulating,
   simState,
   onOpenProperties,
@@ -87,6 +91,7 @@ export const CADEditor: React.FC<CADEditorProps> = ({
   const [isPanning, setIsPanning] = useState(false);
   const [startPan, setStartPan] = useState({ x: 0, y: 0 });
   const [isPanMode, setIsPanMode] = useState(false);
+  const [isColorGuideOpen, setIsColorGuideOpen] = useState(false);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const initialPinchDistRef = useRef<number | null>(null);
   const initialZoomRef = useRef<number>(1.0);
@@ -1146,6 +1151,15 @@ export const CADEditor: React.FC<CADEditorProps> = ({
               <Ruler className="w-4 h-4" />
             </button>
 
+            <button
+              onClick={() => setIsColorGuideOpen(true)}
+              title="Tabla de Colores Reglamentarios IRAM 2183 / AEA 90364"
+              className="px-2 py-1 rounded transition-colors text-[#167D78] dark:text-[#2DD4BF] hover:bg-[#E8F5F5] dark:hover:bg-[#1B2B36] flex items-center gap-1 text-[11px] font-bold border border-[#DCE4E8] dark:border-[#243542]"
+            >
+              <Palette className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Colores IRAM</span>
+            </button>
+
         {selectedElementId && (
           <>
             <div className="h-4 w-px bg-[#DCE4E8] dark:bg-[#243542] mx-0.5" />
@@ -1902,13 +1916,33 @@ export const CADEditor: React.FC<CADEditorProps> = ({
                 )}
 
                 {/* Cable físico / Canalización */}
-                <path
-                  d={pathD}
-                  fill="none"
-                  stroke={isFaultWire ? '#ef4444' : isSelected ? '#f59e0b' : wireColor}
-                  strokeWidth={isFaultWire ? 4 : isSelected ? 3.5 : 2.2}
-                  strokeDasharray={wire.type === 'tierra' ? '6,3' : wire.hasCurrent ? '8,4' : undefined}
-                />
+                {wire.type === 'tierra' ? (
+                  <g>
+                    {/* Trazo base amarillo IRAM 2183 */}
+                    <path
+                      d={pathD}
+                      fill="none"
+                      stroke={isFaultWire ? '#ef4444' : isSelected ? '#f59e0b' : '#facc15'}
+                      strokeWidth={isFaultWire ? 4 : isSelected ? 3.5 : 2.4}
+                    />
+                    {/* Franjas verdes alternadas de protección a tierra reglamentaria */}
+                    <path
+                      d={pathD}
+                      fill="none"
+                      stroke={isFaultWire ? '#991b1b' : '#15803d'}
+                      strokeWidth={isFaultWire ? 4 : isSelected ? 3.5 : 2.4}
+                      strokeDasharray="8,8"
+                    />
+                  </g>
+                ) : (
+                  <path
+                    d={pathD}
+                    fill="none"
+                    stroke={isFaultWire ? '#ef4444' : isSelected ? '#f59e0b' : wireColor}
+                    strokeWidth={isFaultWire ? 4 : isSelected ? 3.5 : 2.2}
+                    strokeDasharray={wire.hasCurrent ? '8,4' : undefined}
+                  />
+                )}
 
                 {/* Etiqueta técnica a mitad del recorrido */}
                 {showDimensions && (
@@ -2131,6 +2165,7 @@ export const CADEditor: React.FC<CADEditorProps> = ({
                     }}
                     className="cursor-pointer hover:scale-110 active:scale-125 transition-transform"
                   >
+                    <title>{sym.state?.isOpen ? 'Click para encender interruptor' : 'Click para apagar interruptor'}</title>
                     <circle cx={0} cy={0} r={15} fill="transparent" />
                     <circle
                       cx={0}
@@ -2141,6 +2176,53 @@ export const CADEditor: React.FC<CADEditorProps> = ({
                       strokeWidth={1.5}
                     />
                     <Power className="w-2.5 h-2.5 -translate-x-[5px] -translate-y-[5px] text-white stroke-[2.5]" />
+                  </g>
+                )}
+
+                {/* Maniobra directa individual de Protecciones (Térmica, Diferencial, IGA) */}
+                {(sym.type === 'termica' || sym.type === 'diferencial' || sym.type === 'interruptor_general' || sym.category === 'proteccion') && (
+                  <g
+                    transform="translate(18, -18)"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleBreaker?.(sym.id);
+                    }}
+                    onTouchEnd={(e) => {
+                      e.stopPropagation();
+                      onToggleBreaker?.(sym.id);
+                    }}
+                    className="cursor-pointer hover:scale-115 active:scale-125 transition-transform"
+                  >
+                    <title>
+                      {sym.state?.isTripped
+                        ? '¡DISPARADA POR FALLA! Toca para intentar rearmar'
+                        : sym.state?.isOpen
+                        ? 'Protección en OFF (Desconectada). Toca para subir palanca (ON)'
+                        : 'Protección en ON (Conectada). Toca para bajar palanca (OFF)'}
+                    </title>
+                    <circle cx={0} cy={0} r={16} fill="transparent" />
+                    <rect
+                      x={-15}
+                      y={-8}
+                      width={30}
+                      height={16}
+                      rx={3}
+                      fill={sym.state?.isTripped ? '#f59e0b' : sym.state?.isOpen ? '#334155' : '#ef4444'}
+                      stroke="#0f172a"
+                      strokeWidth={1.2}
+                    />
+                    <text
+                      x={0}
+                      y={3.5}
+                      textAnchor="middle"
+                      fill="#ffffff"
+                      fontSize="6.5"
+                      fontWeight="bold"
+                      fontFamily="'JetBrains Mono', monospace"
+                      className="select-none pointer-events-none"
+                    >
+                      {sym.state?.isTripped ? 'REARM' : sym.state?.isOpen ? 'OFF' : 'ON'}
+                    </text>
                   </g>
                 )}
               </g>
@@ -2249,6 +2331,11 @@ export const CADEditor: React.FC<CADEditorProps> = ({
         </div>
       </div>
     </div>
+  )}
+
+  {/* Modal de Consulta de Código de Colores Reglamentarios IRAM 2183 */}
+  {isColorGuideOpen && (
+    <WireColorReferenceModal onClose={() => setIsColorGuideOpen(false)} />
   )}
 </div>
   );

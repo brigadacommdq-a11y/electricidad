@@ -787,11 +787,11 @@ export function createSymbolFromTemplate(
 }
 
 export const WIRE_COLOR_MAP: Record<ConductorType, { stroke: string; label: string; code: string }> = {
-  fase: { stroke: '#854d0e', label: 'Fase (Marrón / Negro / Rojo)', code: 'L' },
-  neutro: { stroke: '#0284c7', label: 'Neutro (Celeste)', code: 'N' },
-  tierra: { stroke: '#16a34a', label: 'Protección / Tierra (Verde-Amarillo)', code: 'PE' },
-  retorno: { stroke: '#f59e0b', label: 'Retorno (Gris / Blanco / Negro)', code: 'R' },
-  puente: { stroke: '#a855f7', label: 'Puente Combinación (Violeta / Naranja)', code: 'P' },
+  fase: { stroke: '#92400e', label: 'Fase L (Marrón L1 / Negro L2 / Rojo L3)', code: 'L' },
+  neutro: { stroke: '#0284c7', label: 'Neutro N (Celeste exclusivo)', code: 'N' },
+  tierra: { stroke: '#15803d', label: 'Protección PE (Bicolor Verde-Amarillo)', code: 'PE' },
+  retorno: { stroke: '#a855f7', label: 'Retorno R (Violeta / Blanco / Gris)', code: 'R' },
+  puente: { stroke: '#f97316', label: 'Puente Combinación P (Naranja / Violeta)', code: 'P' },
 };
 
 export interface ComponentLabelInfo {

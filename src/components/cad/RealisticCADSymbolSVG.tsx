@@ -538,9 +538,29 @@ export const RealisticCADSymbolSVG: React.FC<RealisticCADSymbolSVGProps> = ({
 
     case 'termica': {
       // Pequeño Interruptor Automático (PIA / Térmica) modular DIN fotorrealista
+      // 3 Estados: CONECTADA (ON/Cerrada), DESCONECTADA (OFF/Abierta manual), DISPARADA (TRIP por falla)
       const isTripped = symbol.state?.isTripped;
+      const isOpen = symbol.state?.isOpen;
+      const isClosed = !isOpen && !isTripped;
+
       return (
         <g id={symbol.id}>
+          {/* Resplandor ámbar/rojo si se encuentra disparada por falla */}
+          {isTripped && (
+            <rect
+              x={-20}
+              y={-24}
+              width={40}
+              height={48}
+              rx={4}
+              fill="rgba(245, 158, 11, 0.2)"
+              stroke="#f59e0b"
+              strokeWidth={1.5}
+              strokeDasharray="4,2"
+              className="animate-pulse"
+            />
+          )}
+
           {/* Cuerpo plástico del módulo DIN gris claro */}
           <rect
             x={-18}
@@ -549,7 +569,7 @@ export const RealisticCADSymbolSVG: React.FC<RealisticCADSymbolSVGProps> = ({
             height={44}
             rx={2.5}
             fill="#e2e8f0"
-            stroke={isSelected ? '#f59e0b' : '#64748b'}
+            stroke={isTripped ? '#f59e0b' : isSelected ? '#f59e0b' : '#64748b'}
             strokeWidth={isSelected ? 2 : 1.2}
           />
           {/* Ranura frontal y bisel */}
@@ -576,30 +596,59 @@ export const RealisticCADSymbolSVG: React.FC<RealisticCADSymbolSVGProps> = ({
           </g>
 
           {/* Palanca basculante ergonómica negra */}
+          {/* Posición: Arriba (-10) si Cerrada/ON; Abajo (+3) si Abierta manual; Intermedia (-3) si Disparada */}
           <rect
             x={-7}
-            y={isTripped ? 2 : -10}
+            y={isTripped ? -3 : isOpen ? 3 : -10}
             width={14}
             height={9}
             rx={2}
-            fill="#0f172a"
-            stroke="#334155"
+            fill={isTripped ? '#78350f' : '#0f172a'}
+            stroke={isTripped ? '#f59e0b' : '#334155'}
             strokeWidth={0.8}
           />
-          <line x1={-5} y1={isTripped ? 6 : -5} x2={5} y2={isTripped ? 6 : -5} stroke="#64748b" strokeWidth={1} />
+          <line
+            x1={-5}
+            y1={isTripped ? 1 : isOpen ? 7 : -5}
+            x2={5}
+            y2={isTripped ? 1 : isOpen ? 7 : -5}
+            stroke={isTripped ? '#fde047' : '#64748b'}
+            strokeWidth={1}
+          />
 
-          {/* Ventana de estado I/O */}
-          <rect x={-5} y={-1} width={10} height={4} rx={0.8} fill={isTripped ? '#10b981' : '#ef4444'} />
+          {/* Ventana de estado I/O: Rojo = Conectada (I), Verde = Desconectada segura (O), Ámbar = TRIP */}
+          <rect
+            x={-6}
+            y={-1}
+            width={12}
+            height={5}
+            rx={1}
+            fill={isTripped ? '#f59e0b' : isClosed ? '#ef4444' : '#10b981'}
+            stroke="#0f172a"
+            strokeWidth={0.4}
+          />
+          <text
+            x={0}
+            y={3}
+            textAnchor="middle"
+            fontSize="3.8"
+            fontWeight="bold"
+            fill="#ffffff"
+            fontFamily="'JetBrains Mono', monospace"
+            className="select-none pointer-events-none"
+          >
+            {isTripped ? 'TRIP' : isClosed ? 'I' : 'O'}
+          </text>
 
-          {/* Texto de calibre (ej: C16) */}
+          {/* Texto de calibre (ej: C16 3000A) */}
           <text
             x={0}
             y={12}
             textAnchor="middle"
-            fontSize="5.5"
+            fontSize="5.2"
             fontFamily="'JetBrains Mono', monospace"
             fontWeight="bold"
-            fill="#0f172a"
+            fill={isTripped ? '#b45309' : '#0f172a'}
           >
             C16 3000A
           </text>
@@ -609,8 +658,28 @@ export const RealisticCADSymbolSVG: React.FC<RealisticCADSymbolSVGProps> = ({
 
     case 'diferencial': {
       // Disyuntor diferencial con botón TEST 'T' y sensibilidad 30mA
+      // 3 Estados: CONECTADO (ON), DESCONECTADO (OFF manual), DISPARADO (TRIP por fuga/test)
+      const isTripped = symbol.state?.isTripped;
+      const isOpen = symbol.state?.isOpen;
+      const isClosed = !isOpen && !isTripped;
+
       return (
         <g id={symbol.id}>
+          {isTripped && (
+            <rect
+              x={-22}
+              y={-24}
+              width={44}
+              height={48}
+              rx={4}
+              fill="rgba(245, 158, 11, 0.2)"
+              stroke="#f59e0b"
+              strokeWidth={1.5}
+              strokeDasharray="4,2"
+              className="animate-pulse"
+            />
+          )}
+
           {/* Cuerpo DIN doble módulo */}
           <rect
             x={-20}
@@ -619,7 +688,7 @@ export const RealisticCADSymbolSVG: React.FC<RealisticCADSymbolSVGProps> = ({
             height={44}
             rx={2.5}
             fill="#f1f5f9"
-            stroke={isSelected ? '#f59e0b' : '#38bdf8'}
+            stroke={isTripped ? '#f59e0b' : isSelected ? '#f59e0b' : '#38bdf8'}
             strokeWidth={isSelected ? 2 : 1.2}
           />
           <rect x={-16} y={-16} width={32} height={32} rx={1.5} fill="#e2e8f0" stroke="#cbd5e1" strokeWidth={0.6} />
@@ -638,9 +707,28 @@ export const RealisticCADSymbolSVG: React.FC<RealisticCADSymbolSVGProps> = ({
           </text>
 
           {/* Palanca de rearme */}
-          <rect x={3} y={-8} width={8} height={12} rx={1.5} fill="#0284c7" stroke="#0369a1" strokeWidth={0.8} />
+          <rect
+            x={3}
+            y={isTripped ? -2 : isOpen ? 3 : -9}
+            width={9}
+            height={11}
+            rx={1.5}
+            fill={isTripped ? '#78350f' : isClosed ? '#0284c7' : '#475569'}
+            stroke={isTripped ? '#f59e0b' : '#0369a1'}
+            strokeWidth={0.8}
+          />
 
-          {/* Marca de 30 mA */}
+          {/* Visor de estado */}
+          <rect
+            x={3}
+            y={4}
+            width={9}
+            height={4}
+            rx={0.8}
+            fill={isTripped ? '#f59e0b' : isClosed ? '#ef4444' : '#10b981'}
+          />
+
+          {/* Marca de 40A 30 mA */}
           <text
             x={0}
             y={12}
@@ -648,9 +736,9 @@ export const RealisticCADSymbolSVG: React.FC<RealisticCADSymbolSVGProps> = ({
             fontSize="5"
             fontFamily="'JetBrains Mono', monospace"
             fontWeight="bold"
-            fill="#0369a1"
+            fill={isTripped ? '#b45309' : '#0369a1'}
           >
-            40A 30mA
+            {isTripped ? '¡TRIP 30mA!' : '40A 30mA'}
           </text>
         </g>
       );
@@ -658,8 +746,27 @@ export const RealisticCADSymbolSVG: React.FC<RealisticCADSymbolSVGProps> = ({
 
     case 'interruptor_general': {
       // IGA de cabecera con palanca roja robusta
+      const isTripped = symbol.state?.isTripped;
+      const isOpen = symbol.state?.isOpen;
+      const isClosed = !isOpen && !isTripped;
+
       return (
         <g id={symbol.id}>
+          {isTripped && (
+            <rect
+              x={-22}
+              y={-24}
+              width={44}
+              height={48}
+              rx={4}
+              fill="rgba(239, 68, 68, 0.2)"
+              stroke="#ef4444"
+              strokeWidth={1.5}
+              strokeDasharray="4,2"
+              className="animate-pulse"
+            />
+          )}
+
           <rect
             x={-20}
             y={-22}
@@ -667,14 +774,35 @@ export const RealisticCADSymbolSVG: React.FC<RealisticCADSymbolSVGProps> = ({
             height={44}
             rx={2.5}
             fill="#e2e8f0"
-            stroke={isSelected ? '#f59e0b' : '#ef4444'}
+            stroke={isTripped ? '#ef4444' : isSelected ? '#f59e0b' : '#ef4444'}
             strokeWidth={isSelected ? 2.5 : 1.5}
           />
           <rect x={-16} y={-16} width={32} height={32} rx={1.5} fill="#cbd5e1" />
+
           {/* Palanca roja unificada */}
-          <rect x={-10} y={-7} width={20} height={10} rx={2} fill="#dc2626" stroke="#991b1b" strokeWidth={0.8} />
-          <text x={0} y={12} textAnchor="middle" fontSize="5.5" fontWeight="bold" fill="#0f172a">
-            IGA 32A 2P
+          <rect
+            x={-10}
+            y={isTripped ? -1 : isOpen ? 4 : -9}
+            width={20}
+            height={9}
+            rx={2}
+            fill={isTripped ? '#7f1d1d' : isClosed ? '#dc2626' : '#475569'}
+            stroke="#991b1b"
+            strokeWidth={0.8}
+          />
+
+          {/* Visor I/O */}
+          <rect
+            x={-5}
+            y={3}
+            width={10}
+            height={4}
+            rx={0.8}
+            fill={isTripped ? '#f59e0b' : isClosed ? '#ef4444' : '#10b981'}
+          />
+
+          <text x={0} y={13} textAnchor="middle" fontSize="5.2" fontWeight="bold" fill="#0f172a">
+            {isTripped ? 'IGA DISPARADO' : 'IGA 32A 2P'}
           </text>
         </g>
       );

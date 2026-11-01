@@ -1,6 +1,8 @@
 /**
  * ELECTRA PLAN — Motor de Simulación Eléctrica y Verificación de Red
- * Modelo gráfico de nodos, continuidad, cálculo de cargas y diagnósticos lógicos.
+ * Modelo de grafos de nodos, continuidad, cálculo de cargas activas, maniobra individual
+ * de protecciones y diagnóstico pedagógico en tiempo real.
+ * Cumple con especificaciones AEA 90364 e IRAM 2183.
  */
 
 import {
@@ -44,7 +46,6 @@ export function simulateElectricalNetwork(project: Project): {
   const wires = project.wires.map((w) => ({ ...w }));
 
   // 1. Encontrar fuentes de alimentación activas
-  // Una fuente puede ser un componente tipo 'fuente_ac' o 'tablero'
   const powerSources = Array.from(symbolMap.values()).filter(
     (s) => s.type === 'fuente_ac' || s.type === 'tablero'
   );
@@ -75,7 +76,6 @@ export function simulateElectricalNetwork(project: Project): {
   }
 
   // 2. Construir grafo de adyacencia de terminales
-  // Clave de terminal: `${componentId}:${terminalId}`
   const termKey = (compId: string, termId: string) => `${compId}:${termId}`;
   const graph = new Map<string, Array<{ target: string; wire: Wire }>>();
 
@@ -86,21 +86,31 @@ export function simulateElectricalNetwork(project: Project): {
     graph.get(t2)!.push({ target: t1, wire });
   };
 
-  // Agregar aristas de los cables físicos
+  // Agregar aristas de cables físicos existentes
   for (const wire of wires) {
     const k1 = termKey(wire.fromComponentId, wire.fromTerminalId);
     const k2 = termKey(wire.toComponentId, wire.toTerminalId);
     addEdge(k1, k2, wire);
   }
 
-  // Agregar puentes internos según el estado de cada componente
+  // Helper para verificar si un circuito en el tablero está habilitado
+  const isSwitchboardCircuitClosed = (circId?: string) => {
+    if (!circId || !project.switchboard?.components) return true;
+    const comp = project.switchboard.components.find(
+      (c) => c.circuitId === circId || c.name.includes(circId)
+    );
+    if (!comp) return true;
+    return comp.state === 'closed';
+  };
+
+  // Agregar puentes internos según el estado individual de cada componente
   for (const sym of symbolMap.values()) {
     const sState = sym.state || {};
 
     if (sym.type === 'fuente_ac') {
-      // Es el generador, no puentea L con N internamente
+      // Generador de red, no puentea L con N internamente
     } else if (sym.type === 'tablero') {
-      // Tablero: Si no está desconectado, puentea L_IN -> L_OUT, N_IN -> N_OUT, PE_IN -> PE_OUT
+      // El tablero principal conmuta si sus protecciones generales están cerradas
       if (!sState.isOpen && !sState.isTripped) {
         addEdge(termKey(sym.id, 'L_IN'), termKey(sym.id, 'L_OUT'), {
           id: `internal_${sym.id}_L`,
@@ -110,7 +120,7 @@ export function simulateElectricalNetwork(project: Project): {
           fromTerminalId: 'L_IN',
           toComponentId: sym.id,
           toTerminalId: 'L_OUT',
-          color: '#854d0e',
+          color: '#92400e',
           crossSectionMm2: 4,
           lengthMeters: 0.1,
         });
@@ -127,7 +137,7 @@ export function simulateElectricalNetwork(project: Project): {
           lengthMeters: 0.1,
         });
       }
-      // PE pasa directo a la barra de puesta a tierra
+      // Barra de puesta a tierra equipotencial pasa siempre
       addEdge(termKey(sym.id, 'PE_IN'), termKey(sym.id, 'PE_OUT'), {
         id: `internal_${sym.id}_PE`,
         floorId: sym.floorId,
@@ -140,9 +150,14 @@ export function simulateElectricalNetwork(project: Project): {
         crossSectionMm2: 4,
         lengthMeters: 0.1,
       });
-    } else if (sym.type === 'termica' || sym.type === 'diferencial') {
-      // Si la protección está cerrada y no disparada
-      if (!sState.isOpen && !sState.isTripped) {
+    } else if (
+      sym.type === 'termica' ||
+      sym.type === 'diferencial' ||
+      sym.type === 'interruptor_general'
+    ) {
+      // MANIOBRA INDIVIDUAL: Conduce SOLO si está cerrada y no disparada
+      const isBoardClosed = isSwitchboardCircuitClosed(sym.circuitId);
+      if (!sState.isOpen && !sState.isTripped && isBoardClosed) {
         addEdge(termKey(sym.id, 'L_IN'), termKey(sym.id, 'L_OUT'), {
           id: `internal_${sym.id}_L`,
           floorId: sym.floorId,
@@ -151,7 +166,7 @@ export function simulateElectricalNetwork(project: Project): {
           fromTerminalId: 'L_IN',
           toComponentId: sym.id,
           toTerminalId: 'L_OUT',
-          color: '#854d0e',
+          color: '#92400e',
           crossSectionMm2: 2.5,
           lengthMeters: 0.05,
         });
@@ -169,7 +184,6 @@ export function simulateElectricalNetwork(project: Project): {
         });
       }
     } else if (sym.type === 'interruptor_simple') {
-      // Si la tecla está cerrada (state.isOpen === false)
       if (sState.isOpen === false) {
         addEdge(termKey(sym.id, 'L'), termKey(sym.id, 'R'), {
           id: `internal_${sym.id}_contact`,
@@ -179,13 +193,12 @@ export function simulateElectricalNetwork(project: Project): {
           fromTerminalId: 'L',
           toComponentId: sym.id,
           toTerminalId: 'R',
-          color: '#f59e0b',
+          color: '#a855f7',
           crossSectionMm2: 1.5,
           lengthMeters: 0.02,
         });
       }
     } else if (sym.type === 'interruptor_doble') {
-      // Tecla doble con 2 circuitos
       if (sState.isOpen === false) {
         addEdge(termKey(sym.id, 'L'), termKey(sym.id, 'R1'), {
           id: `internal_${sym.id}_c1`,
@@ -195,7 +208,7 @@ export function simulateElectricalNetwork(project: Project): {
           fromTerminalId: 'L',
           toComponentId: sym.id,
           toTerminalId: 'R1',
-          color: '#f59e0b',
+          color: '#a855f7',
           crossSectionMm2: 1.5,
           lengthMeters: 0.02,
         });
@@ -209,13 +222,12 @@ export function simulateElectricalNetwork(project: Project): {
           fromTerminalId: 'L',
           toComponentId: sym.id,
           toTerminalId: 'R2',
-          color: '#f59e0b',
+          color: '#a855f7',
           crossSectionMm2: 1.5,
           lengthMeters: 0.02,
         });
       }
     } else if (sym.type === 'conmutado') {
-      // Conmutador de 2 posiciones: posición 1 conecta COM con P1, posición 2 conecta COM con P2
       const pos = sState.switchPosition || 1;
       const targetTerm = pos === 1 ? 'P1' : 'P2';
       addEdge(termKey(sym.id, 'COM'), termKey(sym.id, targetTerm), {
@@ -226,7 +238,7 @@ export function simulateElectricalNetwork(project: Project): {
         fromTerminalId: 'COM',
         toComponentId: sym.id,
         toTerminalId: targetTerm,
-        color: '#a855f7',
+        color: '#f97316',
         crossSectionMm2: 1.5,
         lengthMeters: 0.02,
       });
@@ -240,14 +252,49 @@ export function simulateElectricalNetwork(project: Project): {
           fromTerminalId: 'L',
           toComponentId: sym.id,
           toTerminalId: 'R',
-          color: '#f59e0b',
+          color: '#a855f7',
           crossSectionMm2: 1.5,
           lengthMeters: 0.02,
         });
       }
     } else if (sym.type === 'caja_paso') {
-      // Caja de derivación: todos los cables que lleguen a un borne se unen entre sí
-      // En este modelo, los terminales L_NODE, N_NODE y PE_NODE actúan como nodos únicos
+      // Puentes de derivación
+      addEdge(termKey(sym.id, 'L_IN'), termKey(sym.id, 'L_OUT'), {
+        id: `internal_${sym.id}_L`,
+        floorId: sym.floorId,
+        type: 'fase',
+        fromComponentId: sym.id,
+        fromTerminalId: 'L_IN',
+        toComponentId: sym.id,
+        toTerminalId: 'L_OUT',
+        color: '#92400e',
+        crossSectionMm2: 2.5,
+        lengthMeters: 0.05,
+      });
+      addEdge(termKey(sym.id, 'N_IN'), termKey(sym.id, 'N_OUT'), {
+        id: `internal_${sym.id}_N`,
+        floorId: sym.floorId,
+        type: 'neutro',
+        fromComponentId: sym.id,
+        fromTerminalId: 'N_IN',
+        toComponentId: sym.id,
+        toTerminalId: 'N_OUT',
+        color: '#0284c7',
+        crossSectionMm2: 2.5,
+        lengthMeters: 0.05,
+      });
+      addEdge(termKey(sym.id, 'PE_IN'), termKey(sym.id, 'PE_OUT'), {
+        id: `internal_${sym.id}_PE`,
+        floorId: sym.floorId,
+        type: 'tierra',
+        fromComponentId: sym.id,
+        fromTerminalId: 'PE_IN',
+        toComponentId: sym.id,
+        toTerminalId: 'PE_OUT',
+        color: '#16a34a',
+        crossSectionMm2: 2.5,
+        lengthMeters: 0.05,
+      });
     }
   }
 
@@ -255,7 +302,6 @@ export function simulateElectricalNetwork(project: Project): {
   const reachableFromPhase = new Set<string>();
   const visitedWires = new Set<string>();
 
-  // Identificar terminales raíz de Fase
   const phaseRoots: string[] = [];
   const neutralRoots: string[] = [];
   const groundRoots: string[] = [];
@@ -266,8 +312,11 @@ export function simulateElectricalNetwork(project: Project): {
       neutralRoots.push(termKey(src.id, 'N'));
       groundRoots.push(termKey(src.id, 'PE'));
     } else if (src.type === 'tablero') {
-      phaseRoots.push(termKey(src.id, 'L_OUT'));
-      neutralRoots.push(termKey(src.id, 'N_OUT'));
+      const srcState = src.state || {};
+      if (!srcState.isOpen && !srcState.isTripped) {
+        phaseRoots.push(termKey(src.id, 'L_OUT'));
+        neutralRoots.push(termKey(src.id, 'N_OUT'));
+      }
       groundRoots.push(termKey(src.id, 'PE_OUT'));
     }
   }
@@ -284,14 +333,13 @@ export function simulateElectricalNetwork(project: Project): {
       visitedWires.add(wire.id);
       energizedWires.add(wire.id);
 
-      // Extraer id de componente
       const targetCompId = target.split(':')[0];
       energizedComponents.add(targetCompId);
 
       if (!reachableFromPhase.has(target)) {
         reachableFromPhase.add(target);
-        // NO propagamos automáticamente a través de la carga (ej: lámpara L -> N) para no considerar el Neutro como Fase
-        const isLoadThrough = isLoadBoundary(target);
+        // Las cargas reales (lámparas, soldadoras, bombas, termotanques) absorben la diferencia de potencial
+        const isLoadThrough = isLoadBoundary(target, symbolMap);
         if (!isLoadThrough) {
           queue.push(target);
         }
@@ -308,10 +356,10 @@ export function simulateElectricalNetwork(project: Project): {
     const current = neutralQueue.shift()!;
     const neighbors = graph.get(current) || [];
 
-    for (const { target, wire } of neighbors) {
+    for (const { target } of neighbors) {
       if (!reachableFromNeutral.has(target)) {
         reachableFromNeutral.add(target);
-        const isLoadThrough = isLoadBoundary(target);
+        const isLoadThrough = isLoadBoundary(target, symbolMap);
         if (!isLoadThrough) {
           neutralQueue.push(target);
         }
@@ -321,7 +369,6 @@ export function simulateElectricalNetwork(project: Project): {
 
   // 5. Propagación de Tierra (Ground BFS)
   const reachableFromGround = new Set<string>();
-  // También agregar jabalinas existentes como raíces de tierra
   const patElectrodes = Array.from(symbolMap.values()).filter((s) => s.type === 'puesta_tierra');
   for (const pat of patElectrodes) {
     groundRoots.push(termKey(pat.id, 'PE'));
@@ -342,7 +389,7 @@ export function simulateElectricalNetwork(project: Project): {
     }
   }
 
-  // 6. Detección y Localización Avanzada de Fallas y Cortocircuitos
+  // 6. Detección y Localización Avanzada de Fallas
   const detailedFaults = locateAllFaults(project);
   let hasShortCircuit = detailedFaults.some((f) => f.category === 'cortocircuito_franco');
 
@@ -357,36 +404,50 @@ export function simulateElectricalNetwork(project: Project): {
       recommendation: fault.remedySteps.join(' '),
       faultDetail: fault,
     });
-  }
 
-  // Fallback si por BFS estándar también se detecta cortocircuito no capturado
-  if (!hasShortCircuit) {
-    for (const nRoot of neutralRoots) {
-      if (reachableFromPhase.has(nRoot)) {
-        hasShortCircuit = true;
-        diagnostics.unshift({
-          id: 'diag_short_circuit_generic',
-          level: 'error',
-          title: '¡CORTOCIRCUITO DIRECTO DETECTADO!',
-          message: 'Existe un camino de impedancia nula entre Fase y Neutro sin pasar por una carga resistiva o inductiva.',
-          recommendation: 'Verifica las conexiones: la Fase nunca debe conectarse directamente al Neutro sin una luminaria o carga intermedia.',
-        });
-        break;
+    // Disparar las protecciones afectadas de manera aislada
+    if (fault.trippedProtection) {
+      if (fault.category === 'cortocircuito_franco' || fault.category === 'sobrecarga') {
+        if (fault.fromComponentId) {
+          const breaker = symbolMap.get(fault.fromComponentId);
+          if (breaker) {
+            breaker.state = {
+              ...breaker.state,
+              isTripped: true,
+              isOpen: true,
+            };
+          }
+        }
+      } else if (fault.category === 'falla_tierra') {
+        // Disparo del diferencial
+        const diffSym = Array.from(symbolMap.values()).find((s) => s.type === 'diferencial');
+        if (diffSym) {
+          diffSym.state = {
+            ...diffSym.state,
+            isTripped: true,
+            isOpen: true,
+          };
+        }
       }
     }
   }
 
-  // 7. Evaluar estado de luminarias y receptores
+  // 7. Evaluar estado de todos los artefactos y receptores
+  // REGLAS ESENCIALES:
+  // - Un artefacto sin cables está desconectado (0 W, 0 A).
+  // - Solo consume potencia activa si tiene cables físicos y le llegan Fase y Neutro simultáneamente.
   let totalWatts = 0;
+
   for (const sym of symbolMap.values()) {
+    const isUtilization = sym.category === 'utilizacion' || sym.type === 'luminaria';
+    const isOutlet = sym.type === 'tomacorriente' || sym.type === 'toma_especial';
+
     if (sym.type === 'luminaria') {
       const lTerm = termKey(sym.id, 'L');
       const nTerm = termKey(sym.id, 'N');
-      const peTerm = termKey(sym.id, 'PE');
 
       const hasPhase = reachableFromPhase.has(lTerm);
       const hasNeutral = reachableFromNeutral.has(nTerm);
-      const hasGround = reachableFromGround.has(peTerm);
 
       if (hasPhase && hasNeutral && !hasShortCircuit) {
         activeLamps.add(sym.id);
@@ -403,36 +464,58 @@ export function simulateElectricalNetwork(project: Project): {
           isEnergized: hasPhase,
         };
       }
+    } else if (isUtilization && sym.type !== 'luminaria') {
+      // Artefactos de potencia: soldadoras, termotanques, bombas, lavarropas, hornos, etc.
+      const lTerm = termKey(sym.id, 'L');
+      const nTerm = termKey(sym.id, 'N');
 
-      // Advertencia de puesta a tierra
-      if (!hasGround && (graph.get(peTerm)?.length || 0) === 0) {
-        // Not strictly an error for simple lamp practice, but note in AEA
+      // Comprobar si tiene cables conectados
+      const hasWires = graph.get(lTerm)?.length && graph.get(nTerm)?.length;
+      const hasPhase = reachableFromPhase.has(lTerm);
+      const hasNeutral = reachableFromNeutral.has(nTerm);
+
+      if (hasWires && hasPhase && hasNeutral && !hasShortCircuit) {
+        sym.state = {
+          ...sym.state,
+          isOn: true,
+          isEnergized: true,
+        };
+        totalWatts += sym.powerWatts || 0;
+      } else {
+        sym.state = {
+          ...sym.state,
+          isOn: false,
+          isEnergized: Boolean(hasWires && hasPhase),
+        };
       }
-    } else if (sym.type === 'tomacorriente' || sym.type === 'toma_especial') {
+    } else if (isOutlet) {
       const lTerm = termKey(sym.id, 'L');
       const nTerm = termKey(sym.id, 'N');
       const peTerm = termKey(sym.id, 'PE');
 
+      const hasWires = graph.get(lTerm)?.length || graph.get(nTerm)?.length;
       const hasPhase = reachableFromPhase.has(lTerm);
       const hasNeutral = reachableFromNeutral.has(nTerm);
       const hasGround = reachableFromGround.has(peTerm);
 
       sym.state = {
         ...sym.state,
-        isEnergized: hasPhase && hasNeutral,
+        isEnergized: Boolean(hasWires && hasPhase && hasNeutral),
       };
 
-      if (!hasGround) {
+      // Solo advertir si el toma está conectado a la red viva y no tiene PE
+      if (hasWires && (hasPhase || hasNeutral) && !hasGround) {
         diagnostics.push({
           id: `diag_toma_no_pe_${sym.id}`,
           level: 'warning',
           title: `Tomacorriente ${sym.label} sin Puesta a Tierra`,
           message: `El contacto de protección a tierra (PE) de ${sym.name} no está conectado a la jabalina de PAT.`,
           componentId: sym.id,
-          recommendation: 'Según AEA 90364-771, todo tomacorriente debe contar obligatoriamente con conductor de protección (PE) verde-amarillo de sección mínima 2,5 mm².',
+          recommendation:
+            'Según AEA 90364-771, todo tomacorriente debe contar obligatoriamente con conductor de protección (PE) verde-amarillo de sección mínima 2,5 mm².',
         });
       }
-    } else if (sym.type === 'interruptor_simple') {
+    } else if (sym.category === 'comando') {
       const lTerm = termKey(sym.id, 'L');
       const rTerm = termKey(sym.id, 'R');
       const isEnergized = reachableFromPhase.has(lTerm) || reachableFromPhase.has(rTerm);
@@ -443,56 +526,22 @@ export function simulateElectricalNetwork(project: Project): {
     }
   }
 
-  // 8. Detección de terminales libres / sin conectar
-  for (const sym of symbolMap.values()) {
-    for (const term of sym.terminals) {
-      const key = termKey(sym.id, term.id);
-      const conns = graph.get(key) || [];
-      if (conns.length === 0) {
-        // En timbres, ventiladores o tomas, avisar si faltan conexiones clave
-        if (term.id === 'L' || term.id === 'N' || term.id === 'COM') {
-          diagnostics.push({
-            id: `diag_unconnected_${sym.id}_${term.id}`,
-            level: 'info',
-            title: `Borne libre: ${sym.label} [${term.name}]`,
-            message: `El terminal "${term.name}" del componente "${sym.name}" se encuentra sin cable conectado.`,
-            componentId: sym.id,
-            recommendation: `Toca este terminal y arrastra un cable hacia el punto correspondiente para completar el circuito.`,
-          });
-        }
-      }
-    }
-  }
-
-  // 9. Comprobar circuitos abiertos en interruptores
-  const openSwitches = Array.from(symbolMap.values()).filter(
-    (s) => s.category === 'comando' && s.state?.isOpen === true && s.state?.isEnergized
-  );
-  if (openSwitches.length > 0 && activeLamps.size === 0 && !hasShortCircuit) {
-    diagnostics.push({
-      id: 'diag_switches_open',
-      level: 'info',
-      title: 'Circuito abierto en interruptor (Apagado normal)',
-      message: `El interruptor ${openSwitches.map((s) => s.label).join(', ')} está en posición abierta (apagado).`,
-      recommendation: 'Haz clic sobre el interruptor en el plano o simulador para cerrar el contacto y encender la carga.',
-    });
-  }
-
-  // 10. Si todo está correcto y hay lámparas encendidas
-  if (activeLamps.size > 0 && !hasShortCircuit) {
+  // 8. Mensaje de éxito si hay cargas funcionando normalmente
+  if ((activeLamps.size > 0 || totalWatts > 0) && !hasShortCircuit && detailedFaults.length === 0) {
     diagnostics.unshift({
       id: 'diag_sim_success',
       level: 'success',
       title: 'Continuidad correcta en el modelo',
-      message: `Se ha verificado continuidad lógica completa desde la alimentación hasta ${activeLamps.size} punto(s) de iluminación. Potencia activa simulada: ${totalWatts} W.`,
-      recommendation: 'La simulación demuestra continuidad lógica funcional. Recuerda que no reemplaza los ensayos físicos de aislamiento, medición de PAT ni verificación de protecciones.',
+      message: `Se ha verificado continuidad lógica completa desde la alimentación. Potencia activa simulada: ${totalWatts} W (${(totalWatts / 220).toFixed(2)} A).`,
+      recommendation:
+        'La simulación demuestra continuidad lógica funcional según el estado de las protecciones e interruptores accionados.',
     });
   }
 
   // Actualizar estado en cables
   for (const wire of wires) {
     wire.isEnergized = energizedWires.has(wire.id);
-    wire.hasCurrent = activeLamps.size > 0 && wire.isEnergized;
+    wire.hasCurrent = (activeLamps.size > 0 || totalWatts > 0) && wire.isEnergized;
   }
 
   const simCurrent = totalWatts / 220;
@@ -515,15 +564,18 @@ export function simulateElectricalNetwork(project: Project): {
 }
 
 /**
- * Determina si un terminal actúa como frontera de carga con impedancia (no puente directo)
+ * Determina si un terminal actúa como frontera de carga con impedancia (resistencia/reactancia)
+ * para evitar que la fase se propague erróneamente hacia el neutro.
  */
-function isLoadBoundary(termKey: string): boolean {
-  // Lámpara terminal L y N son frontera de carga resistiva
-  if (termKey.includes('luminaria:L') || termKey.includes('luminaria:N')) {
-    return true;
+function isLoadBoundary(termKey: string, symbolMap: Map<string, ElectricalSymbol>): boolean {
+  const [compId, termId] = termKey.split(':');
+  const sym = symbolMap.get(compId);
+  if (!sym) return false;
+
+  // Toda luminaria o artefacto de utilización es frontera de carga
+  if (sym.category === 'utilizacion' || sym.type === 'luminaria') {
+    return termId === 'L' || termId === 'N' || termId === 'R';
   }
-  if (termKey.includes('timbre:R') || termKey.includes('timbre:N')) {
-    return true;
-  }
+
   return false;
 }
