@@ -494,7 +494,17 @@ export function locateAllFaults(project: Project): FaultDetail[] {
       return hasL && hasN;
     });
 
-    const totalActiveWatts = connectedCircuitSymbols.reduce((sum, s) => sum + (s.powerWatts || 0), 0);
+    // Sumar artefactos enchufables (estufas, aires, soldadoras, etc.) enchufados en tomas del circuito
+    const pluggedInCircuit = (project.pluggedAppliances || []).filter((app) => {
+      if (!app.pluggedIntoSymbolId) return false;
+      if (app.isOn === false) return false;
+      const socket = symbolMap.get(app.pluggedIntoSymbolId);
+      return socket && socket.circuitId === circ.id && hasPhysicalWiresConnected(socket.id, ['L', 'N']);
+    });
+    const pluggedWatts = pluggedInCircuit.reduce((sum, app) => sum + (app.powerWatts || 0), 0);
+
+    const totalActiveWatts =
+      connectedCircuitSymbols.reduce((sum, s) => sum + (s.powerWatts || 0), 0) + pluggedWatts;
     const designAmps = totalActiveWatts / (circ.voltage || 220);
 
     if (designAmps > breakerAmps && totalActiveWatts > 0) {
@@ -506,30 +516,155 @@ export function locateAllFaults(project: Project): FaultDetail[] {
         statusText: `Disparo bimetálico térmico en ${circ.id} por sobrecarga sostenida (Ib=${designAmps.toFixed(1)} A > In=${breakerAmps} A).`,
       };
 
-      const coords = calculateCentroid(
-        connectedCircuitSymbols.map((s) => s.id),
-        symbolMap
-      );
+      const involvedIds = [
+        ...connectedCircuitSymbols.map((s) => s.id),
+        ...pluggedInCircuit.map((p) => p.pluggedIntoSymbolId!).filter(Boolean),
+      ];
+
+      const coords = calculateCentroid(involvedIds, symbolMap);
+      const appNotes = pluggedInCircuit.length > 0 
+        ? ` Incluye cargas enchufadas: ${pluggedInCircuit.map((p) => `${p.name} (${p.powerWatts}W)`).join(', ')}.` 
+        : '';
 
       faults.push({
         id: `fault_overload_${circ.id}`,
         category: 'sobrecarga',
         severity: 'advertencia_normativa',
         title: `Sobrecarga Activa en Circuito ${circ.name} (${circ.id})`,
-        faultLoopDescription: `La corriente real demandada por los artefactos conectados (${designAmps.toFixed(1)} A) supera la capacidad asignada del interruptor termomagnético (${breakerAmps} A).`,
-        detectionReason: `Los artefactos efectivamente cableados al circuito suman ${totalActiveWatts} W, excediendo la corriente admisible de la térmica de ${breakerAmps} A. Esto sobrecalentará los conductores de ${circ.crossSectionMm2 || 2.5} mm² y provocará el disparo térmico por bimetal.`,
+        faultLoopDescription: `La corriente real demandada (${designAmps.toFixed(1)} A) supera la capacidad asignada del interruptor termomagnético (${breakerAmps} A).${appNotes}`,
+        detectionReason: `Las cargas cableadas y enchufadas al circuito suman ${totalActiveWatts} W, excediendo la corriente admisible de la térmica de ${breakerAmps} A. Provocará el disparo térmico retardado por curvatura del bimetal.`,
         fromComponentId: circuitBreakerSym?.id,
         involvedWireIds: project.wires.filter((w) => w.circuitId === circ.id).map((w) => w.id),
-        involvedComponentIds: connectedCircuitSymbols.map((s) => s.id),
+        involvedComponentIds: involvedIds,
         involvedTerminalKeys: [],
         trippedProtection,
         remedySteps: [
-          '1. Divide los artefactos de alto consumo en circuitos independientes según AEA 771.',
-          '2. Para artefactos de uso especial (soldadoras, bombas, termotanques), asígnales un circuito TUE o circuito exclusivo.',
-          '3. Recuerda coordinar siempre según la regla de oro: Ib <= In <= Iz.',
+          '1. Desconecta o desenchufa artefactos de alta potencia del mismo circuito.',
+          '2. Divide los consumos creando un circuito exclusivo (ej. TUE o circuito para climatización / soldadora).',
+          '3. Respeta siempre la regla de coordinación de protecciones: Ib <= In <= Iz.',
         ],
         coordinates: coords,
       });
+    }
+  }
+
+  // =========================================================================
+  // F. FALLAS EDUCATIVAS INYECTADAS MANUALMENTE
+  // =========================================================================
+  if (project.injectedFaults && project.injectedFaults.length > 0) {
+    for (const inj of project.injectedFaults) {
+      if (!inj.isSimulatedActive) continue;
+
+      const targetComp = inj.targetComponentId ? symbolMap.get(inj.targetComponentId) : undefined;
+      const targetCirc = inj.targetCircuitId
+        ? project.circuits.find((c) => c.id === inj.targetCircuitId)
+        : undefined;
+
+      const compLabel = targetComp?.name || targetComp?.label || targetCirc?.name || 'Circuito';
+      const coords = targetComp ? { x: targetComp.x, y: targetComp.y } : { x: 300, y: 250 };
+
+      if (inj.type === 'cortocircuito_franco') {
+        const breakerSym = project.symbols.find(
+          (s) => (s.type === 'termica' || s.category === 'proteccion') && (!inj.targetCircuitId || s.circuitId === inj.targetCircuitId)
+        ) || project.symbols.find((s) => s.type === 'interruptor_general');
+
+        faults.push({
+          id: `inj_fault_${inj.id}`,
+          category: 'cortocircuito_franco',
+          severity: 'peligro_inmediato',
+          title: `Falla Inyectada: Cortocircuito Franco en ${compLabel}`,
+          faultLoopDescription: `Cortocircuito forzado didácticamente en ${compLabel} (resistencia 0 Ω).`,
+          detectionReason: `Unión directa accidental entre Fase y Neutro. Corriente de cortocircuito instantánea superior a 1500 A.`,
+          fromComponentId: breakerSym?.id,
+          toComponentId: targetComp?.id,
+          involvedWireIds: inj.targetWireId ? [inj.targetWireId] : [],
+          involvedComponentIds: targetComp ? [targetComp.id] : [],
+          involvedTerminalKeys: targetComp ? [`${targetComp.id}:L`, `${targetComp.id}:N`] : [],
+          trippedProtection: {
+            deviceType: 'PIA_TERMOMAGNETICA',
+            nominalRating: breakerSym?.label || 'Curva C (5 a 10 x In)',
+            tripMechanism: 'DISPARO_MAGNETICO_INSTANTANEO',
+            responseTimeMs: 12,
+            statusText: `Disparo electromagnético instantáneo (<15 ms) por cortocircuito provocado en ${compLabel}.`,
+          },
+          remedySteps: [
+            '1. La protección termomagnética ha operado para impedir la fusión de conductores.',
+            '2. Utiliza el multímetro en escala de Ohms (Ω) con circuito desenergizado para ubicar el cruce.',
+            '3. Desactiva o repara la falla inyectada desde el panel del simulador.',
+            '4. Rearma la térmica.',
+          ],
+          coordinates: coords,
+        });
+      } else if (inj.type === 'falla_tierra_30ma') {
+        const diffSym = project.symbols.find((s) => s.type === 'diferencial');
+        faults.push({
+          id: `inj_fault_${inj.id}`,
+          category: 'falla_tierra',
+          severity: 'peligro_inmediato',
+          title: `Falla Inyectada: Fuga a Tierra en ${compLabel} (${inj.leakageCurrentMa || 35} mA)`,
+          faultLoopDescription: `Pérdida de aislación con derivación a tierra que supera el umbral de disparo de 30 mA.`,
+          detectionReason: `El toroide del interruptor diferencial detecta una diferencia vectorial entre la corriente de ida (Fase) y la de retorno (Neutro) superior a 30 mA.`,
+          fromComponentId: diffSym?.id,
+          toComponentId: targetComp?.id,
+          involvedWireIds: inj.targetWireId ? [inj.targetWireId] : [],
+          involvedComponentIds: targetComp ? [targetComp.id] : [],
+          involvedTerminalKeys: targetComp ? [`${targetComp.id}:L`, `${targetComp.id}:PE`] : [],
+          trippedProtection: {
+            deviceType: 'INTERRUPTOR_DIFERENCIAL',
+            nominalRating: 'ID 40A / 30mA (Clase AC)',
+            tripMechanism: 'DISPARO_DIFERENCIAL_RESIDUAL_30mA',
+            responseTimeMs: 25,
+            statusText: `Disparo residual diferencial en 25 ms por fuga a tierra de ${inj.leakageCurrentMa || 35} mA en ${compLabel}.`,
+          },
+          remedySteps: [
+            '1. El disyuntor diferencial salvó una vida desconectando la red en menos de 30 ms.',
+            '2. Desconecta los receptores del circuito uno por uno para aislar el equipo con fuga de aislación.',
+            '3. Verifica la resistencia de aislación con Megóhmetro (debe ser > 1 MΩ a 500V DC).',
+            '4. Desactiva la falla inyectada y rearma el disyuntor.',
+          ],
+          coordinates: coords,
+        });
+      } else if (inj.type === 'neutro_interrumpido') {
+        faults.push({
+          id: `inj_fault_${inj.id}`,
+          category: 'circuito_abierto',
+          severity: 'circuito_inoperativo',
+          title: `Falla Inyectada: Neutro Interrumpido en ${compLabel}`,
+          faultLoopDescription: `El conductor neutro de retorno está cortado o desconectado en el tramo de ${compLabel}.`,
+          detectionReason: `Falta de continuidad en el conductor de neutro (azul). La fase tiene 220V pero al no haber camino de retorno los artefactos no funcionan y presentan tensión residual flotante.`,
+          toComponentId: targetComp?.id,
+          involvedWireIds: inj.targetWireId ? [inj.targetWireId] : [],
+          involvedComponentIds: targetComp ? [targetComp.id] : [],
+          involvedTerminalKeys: targetComp ? [`${targetComp.id}:N`] : [],
+          remedySteps: [
+            '1. Los artefactos no encienden aunque la térmica esté arriba.',
+            '2. Medir con buscapolo: detectará fase encendida en ambos bornes del artefacto a través del filamento/bobina.',
+            '3. Medir con voltímetro entre L y N en el toma: indicará 0 V.',
+            '4. Reparar el empalme de neutro en la caja de derivación previa.',
+          ],
+          coordinates: coords,
+        });
+      } else if (inj.type === 'falso_contacto_borne') {
+        faults.push({
+          id: `inj_fault_${inj.id}`,
+          category: 'conexion_peligrosa',
+          severity: 'peligro_inmediato',
+          title: `Falla Inyectada: Falso Contacto / Borne Flojo en ${compLabel}`,
+          faultLoopDescription: `Resistencia anómala de contacto (${inj.resistanceOhms || 10} Ω) en el borne de ${compLabel}.`,
+          detectionReason: `Un tornillo sin apretar genera resistencia de contacto concentrada. Bajo carga se produce una caída de tensión severa y disipación de calor (P = I²·R) que derrite el plástico.`,
+          toComponentId: targetComp?.id,
+          involvedWireIds: inj.targetWireId ? [inj.targetWireId] : [],
+          involvedComponentIds: targetComp ? [targetComp.id] : [],
+          involvedTerminalKeys: targetComp ? [`${targetComp.id}:L`] : [],
+          remedySteps: [
+            '1. Se observan parpadeos de luces y caída de tensión pronunciada al encender cargas.',
+            '2. Inspeccionar visualmente bornes quemados o plásticos carbonizados.',
+            '3. Ajustar con destornillador dinamométrico según par indicado por el fabricante (1,2 a 2,5 N·m).',
+            '4. Reemplazar el borne si el cobre se recalentó y perdió temple elástico.',
+          ],
+          coordinates: coords,
+        });
+      }
     }
   }
 

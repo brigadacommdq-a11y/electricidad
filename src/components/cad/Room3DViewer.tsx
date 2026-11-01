@@ -65,6 +65,14 @@ export const Room3DViewer: React.FC<Room3DViewerProps> = ({
   const [selectedSym3D, setSelectedSym3D] = useState<string | null>(null);
   const [cameraPreset, setCameraPreset] = useState<'iso' | 'cenital' | 'eye' | 'tablero' | 'fit'>('iso');
 
+  // Modos de Vista 3D Reglamentarios (Fase 2)
+  const [view3DMode, setView3DMode] = useState<
+    'completa' | 'transparentes' | 'oculta' | 'solo_cables' | 'solo_bocas' | 'tablero'
+  >('completa');
+
+  // Seguimiento de cable desde tablero hasta destino (Wire Tracing interactivo)
+  const [tracedCircuitId, setTracedCircuitId] = useState<string | null>(null);
+
   // Capas de visualización independientes
   const [showArch, setShowArch] = useState(true);
   const [showComponents, setShowComponents] = useState(true);
@@ -74,7 +82,7 @@ export const Room3DViewer: React.FC<Room3DViewerProps> = ({
 
   // Opciones de Muros y Techo
   const [showCeiling, setShowCeiling] = useState(false);
-  const [wallMode, setWallMode] = useState<WallDisplayMode>('solid');
+  const [wallMode, setWallMode] = useState<WallDisplayMode>('translucent');
 
   // Diagnóstico 3D: Aislamiento visual del circuito con falla
   const [isolatedFaultId, setIsolatedFaultId] = useState<string | null>(null);
@@ -1040,9 +1048,34 @@ export const Room3DViewer: React.FC<Room3DViewerProps> = ({
         new THREE.Vector3(p2X, p2Y, p2Z),
       ]);
 
-      // Caño exterior
-      const tubeGeo = new THREE.TubeGeometry(curve, 32, 0.016, 8, false);
-      const tubeMesh = new THREE.Mesh(tubeGeo, conduitMat);
+      // Si hay un circuito siendo rastreado (Wire Tracing)
+      const isTraced = tracedCircuitId ? wire.circuitId === tracedCircuitId : false;
+      const isDimmed = Boolean(tracedCircuitId && wire.circuitId !== tracedCircuitId);
+
+      // Caño exterior: resalta en cian brillante si está en modo tracing
+      const traceConduitMat = new THREE.MeshStandardMaterial({
+        color: 0x06b6d4,
+        emissive: 0x0891b2,
+        emissiveIntensity: 0.85,
+        roughness: 0.2,
+      });
+
+      const dimmedConduitMat = new THREE.MeshStandardMaterial({
+        color: 0xf59e0b,
+        transparent: true,
+        opacity: 0.15,
+        roughness: 0.7,
+      });
+
+      const activeConduitMat = isTraced
+        ? traceConduitMat
+        : isDimmed
+        ? dimmedConduitMat
+        : conduitMat;
+
+      const tubeRadius = isTraced ? 0.024 : 0.016;
+      const tubeGeo = new THREE.TubeGeometry(curve, 32, tubeRadius, 8, false);
+      const tubeMesh = new THREE.Mesh(tubeGeo, activeConduitMat);
       pipeGroup.add(tubeMesh);
 
       // Conductor interior coloreado asomando sutilmente
@@ -1055,11 +1088,11 @@ export const Room3DViewer: React.FC<Room3DViewerProps> = ({
           ? earthWireMat
           : returnWireMat;
 
-      const innerWireGeo = new THREE.TubeGeometry(curve, 32, 0.008, 6, false);
-      const innerWireMesh = new THREE.Mesh(innerWireGeo, wireMat);
+      const innerWireGeo = new THREE.TubeGeometry(curve, 32, isTraced ? 0.012 : 0.008, 6, false);
+      const innerWireMesh = new THREE.Mesh(innerWireGeo, isDimmed ? dimmedConduitMat : wireMat);
       pipeGroup.add(innerWireMesh);
     });
-  }, [project.wires, project.symbols, showGrounding]);
+  }, [project.wires, project.symbols, showGrounding, tracedCircuitId]);
 
   // 5. Diagnóstico en 3D: Resaltado visual de componentes con falla (Etapa 3)
   useEffect(() => {
@@ -1227,101 +1260,241 @@ export const Room3DViewer: React.FC<Room3DViewerProps> = ({
         className="w-full h-full cursor-grab active:cursor-grabbing"
       />
 
-      {/* 2. Barra Superior Minimalista (Top-Left): Identidad y Capas de Visualización */}
-      <div className="absolute top-3 left-3 flex flex-wrap items-center gap-2 z-20 pointer-events-auto">
-        <div className="px-3 py-1.5 bg-slate-900/90 border border-slate-700/80 rounded-xl shadow-xl backdrop-blur-md flex items-center gap-2">
-          <Box className="w-4 h-4 text-[#167D78] dark:text-[#2DD4BF]" />
-          <span className="text-xs font-bold text-white tracking-wide">ESTUDIO 3D</span>
-          <span className="text-[10px] px-1.5 py-0.5 bg-amber-500/20 text-amber-300 font-mono rounded font-semibold border border-amber-500/30">
-            Escala 1:1 AEA
-          </span>
+      {/* 2. Barra Superior (Top-Left): Identidad, Modos de Vista Reglamentarios (Fase 2) y Capas */}
+      <div className="absolute top-3 left-3 right-3 flex flex-wrap items-center justify-between gap-2 z-20 pointer-events-auto">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="px-3 py-1.5 bg-slate-900/90 border border-slate-700/80 rounded-xl shadow-xl backdrop-blur-md flex items-center gap-2">
+            <Box className="w-4 h-4 text-[#167D78] dark:text-[#2DD4BF]" />
+            <span className="text-xs font-bold text-white tracking-wide">ESTUDIO 3D</span>
+            <span className="text-[10px] px-1.5 py-0.5 bg-amber-500/20 text-amber-300 font-mono rounded font-semibold border border-amber-500/30">
+              Escala 1:1 AEA
+            </span>
+          </div>
+
+          {/* Selector de los 6 Modos de Vista Reglamentarios (Fase 2) */}
+          <div className="flex items-center gap-1 bg-slate-900/90 border border-slate-700/80 p-1 rounded-xl shadow-xl backdrop-blur-md text-xs">
+            <button
+              onClick={() => {
+                setView3DMode('completa');
+                setShowArch(true);
+                setWallMode('translucent');
+                setShowComponents(true);
+                setShowConduits(true);
+                setShowCeiling(false);
+              }}
+              className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
+                view3DMode === 'completa' ? 'bg-[#167D78] text-white shadow-xs' : 'text-slate-400 hover:text-white'
+              }`}
+              title="Vista completa con muros translúcidos y toda la instalación visible"
+            >
+              Completa
+            </button>
+            <button
+              onClick={() => {
+                setView3DMode('transparentes');
+                setShowArch(true);
+                setWallMode('translucent');
+                setShowComponents(true);
+                setShowConduits(true);
+                setShowCeiling(false);
+              }}
+              className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
+                view3DMode === 'transparentes' ? 'bg-cyan-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+              }`}
+              title="Rayos X: Muros transparentes para ver cañerías y conductores embutidos"
+            >
+              Rayos X
+            </button>
+            <button
+              onClick={() => {
+                setView3DMode('oculta');
+                setShowArch(true);
+                setWallMode('solid');
+                setShowComponents(true);
+                setShowConduits(false);
+                setShowCeiling(true);
+              }}
+              className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
+                view3DMode === 'oculta' ? 'bg-slate-700 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+              }`}
+              title="Instalación oculta: Paredes sólidas con bocas a la vista"
+            >
+              Oculta
+            </button>
+            <button
+              onClick={() => {
+                setView3DMode('solo_cables');
+                setShowArch(false);
+                setWallMode('hidden');
+                setShowComponents(true);
+                setShowConduits(true);
+                setShowCeiling(false);
+              }}
+              className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
+                view3DMode === 'solo_cables' ? 'bg-amber-500 text-slate-950 font-black shadow-xs' : 'text-slate-400 hover:text-white'
+              }`}
+              title="Solo cables y cañerías: Sin muros ni pisos, red eléctrica pura flotante"
+            >
+              Solo Cables
+            </button>
+            <button
+              onClick={() => {
+                setView3DMode('solo_bocas');
+                setShowArch(true);
+                setWallMode('translucent');
+                setShowComponents(true);
+                setShowConduits(false);
+                setShowCeiling(false);
+              }}
+              className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
+                view3DMode === 'solo_bocas' ? 'bg-purple-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+              }`}
+              title="Solo luminarias y tomas"
+            >
+              Solo Bocas
+            </button>
+            <button
+              onClick={() => {
+                setView3DMode('tablero');
+                setShowArch(true);
+                setWallMode('translucent');
+                setShowComponents(true);
+                setShowConduits(true);
+                setCameraPreset('tablero');
+                const switchboardSym = project.symbols.find((s) => s.type === 'tablero');
+                if (switchboardSym) {
+                  const bx = switchboardSym.x / PIXELS_PER_METER;
+                  const bz = switchboardSym.y / PIXELS_PER_METER;
+                  targetCamPosRef.current = new THREE.Vector3(bx, 1.45, bz + 1.2);
+                  targetLookAtRef.current = new THREE.Vector3(bx, 1.40, bz);
+                }
+              }}
+              className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
+                view3DMode === 'tablero' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+              }`}
+              title="Vista en primer plano del Tablero Seccional General"
+            >
+              Tablero
+            </button>
+          </div>
+
+          {/* Selector de Seguimiento de Cable (Wire Tracing interactivo) */}
+          <div className="hidden lg:flex items-center gap-1.5 bg-slate-900/90 border border-cyan-500/50 p-1 px-2 rounded-xl shadow-xl backdrop-blur-md text-xs">
+            <Radio className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+            <span className="text-[11px] text-cyan-300 font-bold">Seguir Cable:</span>
+            <select
+              value={tracedCircuitId || ''}
+              onChange={(e) => setTracedCircuitId(e.target.value || null)}
+              className="bg-slate-800 text-white text-[11px] font-mono py-0.5 px-2 rounded border border-slate-700 outline-none cursor-pointer"
+            >
+              <option value="">-- Todos los circuitos --</option>
+              {project.circuits.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.id}: {c.name} ({c.crossSectionMm2} mm²)
+                </option>
+              ))}
+            </select>
+            {tracedCircuitId && (
+              <button
+                onClick={() => setTracedCircuitId(null)}
+                className="text-[10px] text-red-400 hover:text-red-300 px-1 font-bold"
+                title="Quitar seguimiento"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Capas de Visualización Rápidas */}
-        <div className="hidden sm:flex items-center gap-1 bg-slate-900/90 border border-slate-700/80 p-1 rounded-xl shadow-xl backdrop-blur-md text-xs text-slate-300">
+        {/* Acciones de Esquina Superior Derecha: Día/Noche y Muros */}
+        <div className="flex items-center gap-2">
+          {/* Selector de Transparencia de Paredes */}
           <button
-            onClick={() => setShowArch(!showArch)}
-            className={`px-2 py-1 rounded font-semibold transition-all flex items-center gap-1 ${
-              showArch ? 'bg-[#167D78] text-white' : 'text-slate-400 hover:text-white'
-            }`}
-            title="Mostrar / Ocultar Arquitectura (muros, pisos, aberturas)"
+            onClick={() => {
+              setWallMode((prev) => (prev === 'solid' ? 'translucent' : prev === 'translucent' ? 'hidden' : 'solid'));
+            }}
+            className="p-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 shadow-xl backdrop-blur-md transition-colors flex items-center gap-1.5 text-xs font-semibold"
+            title="Alternar Paredes: Sólidas / Translúcidas (35%) / Ocultas"
           >
-            <span>Muros & Pisos</span>
+            <Layers className="w-4 h-4 text-cyan-400" />
+            <span className="hidden md:inline">
+              {wallMode === 'solid' ? 'Muros Sólidos' : wallMode === 'translucent' ? 'Muros Translúcidos' : 'Muros Ocultos'}
+            </span>
           </button>
+
+          {/* Día / Noche */}
           <button
-            onClick={() => setShowComponents(!showComponents)}
-            className={`px-2 py-1 rounded font-semibold transition-all flex items-center gap-1 ${
-              showComponents ? 'bg-[#167D78] text-white' : 'text-slate-400 hover:text-white'
-            }`}
-            title="Mostrar / Ocultar Componentes Eléctricos"
+            onClick={() => setIsNightMode((prev) => !prev)}
+            className="p-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 shadow-xl backdrop-blur-md transition-colors flex items-center gap-1.5 text-xs font-medium"
+            title="Alternar Iluminación Ambiental Día/Noche"
           >
-            <span>Bocas</span>
-          </button>
-          <button
-            onClick={() => setShowConduits(!showConduits)}
-            className={`px-2 py-1 rounded font-semibold transition-all flex items-center gap-1 ${
-              showConduits ? 'bg-[#167D78] text-white' : 'text-slate-400 hover:text-white'
-            }`}
-            title="Mostrar / Ocultar Cañerías y Conductores"
-          >
-            <span>Cañerías</span>
-          </button>
-          <button
-            onClick={() => setShowGrounding(!showGrounding)}
-            className={`px-2 py-1 rounded font-semibold transition-all flex items-center gap-1 ${
-              showGrounding ? 'bg-[#15803d] text-white' : 'text-slate-400 hover:text-white'
-            }`}
-            title="Mostrar / Ocultar Puesta a Tierra y Jabalina"
-          >
-            <span>Tierra PE</span>
-          </button>
-          <button
-            onClick={() => setShowCeiling(!showCeiling)}
-            className={`px-2 py-1 rounded font-semibold transition-all flex items-center gap-1 ${
-              showCeiling ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
-            }`}
-            title="Mostrar / Ocultar Techos"
-          >
-            <span>Techo</span>
+            {isNightMode ? (
+              <>
+                <Moon className="w-4 h-4 text-amber-400" />
+                <span className="hidden sm:inline">Noche</span>
+              </>
+            ) : (
+              <>
+                <Sun className="w-4 h-4 text-yellow-400" />
+                <span className="hidden sm:inline">Día</span>
+              </>
+            )}
           </button>
         </div>
       </div>
 
-      {/* 3. Acciones de Esquina Superior Derecha: Día/Noche, Transparencia de Paredes y Ficha */}
-      <div className="absolute top-3 right-3 flex items-center gap-2 z-20">
-        {/* Selector de Transparencia de Paredes */}
-        <button
-          onClick={() => {
-            setWallMode((prev) => (prev === 'solid' ? 'translucent' : prev === 'translucent' ? 'hidden' : 'solid'));
-          }}
-          className="p-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 shadow-xl backdrop-blur-md transition-colors flex items-center gap-1.5 text-xs font-semibold"
-          title="Alternar Paredes: Sólidas / Translúcidas (35%) / Ocultas"
-        >
-          <Layers className="w-4 h-4 text-cyan-400" />
-          <span className="hidden md:inline">
-            {wallMode === 'solid' ? 'Muros Sólidos' : wallMode === 'translucent' ? 'Muros Translúcidos' : 'Muros Ocultos'}
-          </span>
-        </button>
+      {/* HUD Flotante de Wire Tracing (Seguimiento de Cable Activo) */}
+      {tracedCircuitId && (() => {
+        const circ = project.circuits.find((c) => c.id === tracedCircuitId);
+        const wires = project.wires.filter((w) => w.circuitId === tracedCircuitId);
+        const totalLen = wires.reduce((acc, w) => acc + (w.lengthMeters || 4), 0).toFixed(1);
+        const circuitLoads = project.symbols.filter(
+          (s) => s.circuitId === tracedCircuitId && (s.category === 'utilizacion' || s.type === 'luminaria')
+        );
+        const circWatts = circuitLoads.reduce((acc, s) => acc + (s.powerWatts || 0), 0);
 
-        {/* Día / Noche */}
-        <button
-          onClick={() => setIsNightMode((prev) => !prev)}
-          className="p-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 shadow-xl backdrop-blur-md transition-colors flex items-center gap-1.5 text-xs font-medium"
-          title="Alternar Iluminación Ambiental Día/Noche"
-        >
-          {isNightMode ? (
-            <>
-              <Moon className="w-4 h-4 text-amber-400" />
-              <span className="hidden sm:inline">Noche (Luces 3D)</span>
-            </>
-          ) : (
-            <>
-              <Sun className="w-4 h-4 text-yellow-400" />
-              <span className="hidden sm:inline">Día</span>
-            </>
-          )}
-        </button>
-      </div>
+        return (
+          <div className="absolute bottom-16 left-3 z-30 max-w-sm bg-slate-900/95 border-2 border-cyan-500 rounded-2xl p-4 shadow-2xl backdrop-blur-md text-xs text-white space-y-2 animate-fade-in">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <div className="flex items-center gap-2">
+                <Radio className="w-4 h-4 text-cyan-400 animate-pulse" />
+                <h4 className="font-bold text-cyan-300">
+                  Seguimiento de Cable: {circ?.name || tracedCircuitId} ({tracedCircuitId})
+                </h4>
+              </div>
+              <button
+                onClick={() => setTracedCircuitId(null)}
+                className="text-slate-400 hover:text-white text-xs p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-300">
+              <div>
+                <span className="text-slate-500 block">Origen:</span>
+                <span className="font-semibold text-white">Tablero Seccional (PIA {circ?.breakerCurve || 'C'}{circ?.breakerAmps || 16}A)</span>
+              </div>
+              <div>
+                <span className="text-slate-500 block">Conductor:</span>
+                <span className="font-semibold text-cyan-300">{circ?.crossSectionMm2 || 2.5} mm² (Cu 70°C)</span>
+              </div>
+              <div>
+                <span className="text-slate-500 block">Longitud total:</span>
+                <span className="font-mono font-bold text-amber-400">{totalLen} metros</span>
+              </div>
+              <div>
+                <span className="text-slate-500 block">Cargas conectadas:</span>
+                <span className="font-mono text-emerald-400">{circuitLoads.length} bocas ({circWatts} W)</span>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-800 text-[10px] text-slate-400 leading-relaxed">
+              ⚡ <strong>Ruta física:</strong> El conductor sale del tablero, sube al entretecho a 2.60m por caño corrugado, pasa por cajas octogonales de derivación y baja por pared a cada punto de consumo.
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 4. Tarjeta Flotante de Inspección de Componente Seleccionado (Top-Right flank suave) */}
       {selectedSymbolData && (

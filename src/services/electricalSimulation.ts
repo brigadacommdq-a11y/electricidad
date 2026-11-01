@@ -526,6 +526,18 @@ export function simulateElectricalNetwork(project: Project): {
     }
   }
 
+  // 7b. Sumar consumo de artefactos enchufables activos conectados a tomacorrientes energizados
+  if (project.pluggedAppliances && project.pluggedAppliances.length > 0) {
+    for (const app of project.pluggedAppliances) {
+      if (app.pluggedIntoSymbolId && app.isOn !== false) {
+        const outlet = symbolMap.get(app.pluggedIntoSymbolId);
+        if (outlet && outlet.state?.isEnergized && !hasShortCircuit) {
+          totalWatts += app.powerWatts || 0;
+        }
+      }
+    }
+  }
+
   // 8. Mensaje de éxito si hay cargas funcionando normalmente
   if ((activeLamps.size > 0 || totalWatts > 0) && !hasShortCircuit && detailedFaults.length === 0) {
     diagnostics.unshift({

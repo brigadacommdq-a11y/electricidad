@@ -191,6 +191,41 @@ export interface ProjectMetadata {
   interfaceMode?: 'aprendizaje' | 'profesional';
 }
 
+export type InjectedFaultType =
+  | 'none'
+  | 'cortocircuito_franco'
+  | 'falla_tierra_30ma'
+  | 'sobrecarga_circuito'
+  | 'neutro_interrumpido'
+  | 'circuito_abierto'
+  | 'falso_contacto_borne';
+
+export interface InjectedFault {
+  id: string;
+  type: InjectedFaultType;
+  title: string;
+  description: string;
+  targetCircuitId?: string;
+  targetComponentId?: string;
+  targetWireId?: string;
+  resistanceOhms?: number;
+  leakageCurrentMa?: number;
+  isSimulatedActive: boolean;
+}
+
+export interface PluggableAppliance {
+  id: string;
+  name: string;
+  category: 'calefaccion' | 'climatizacion' | 'electrodomestico' | 'taller' | 'motores';
+  powerWatts: number;
+  powerFactor: number;
+  apparentAmps: number;
+  iconName: string;
+  description: string;
+  pluggedIntoSymbolId?: string; // ID del tomacorriente donde está enchufado
+  isOn?: boolean;
+}
+
 export interface Project {
   version: string;
   metadata: ProjectMetadata;
@@ -204,6 +239,13 @@ export interface Project {
   switchboard: Switchboard;
   bomPriceOverrides?: Record<string, number>;
   currency: 'ARS' | 'USD' | 'EUR';
+  injectedFaults?: InjectedFault[];
+  pluggedAppliances?: PluggableAppliance[];
+  clientRequest?: {
+    clientName?: string;
+    siteAddress?: string;
+    [key: string]: any;
+  };
 }
 
 // Tipos detallados de detección y localización de fallas

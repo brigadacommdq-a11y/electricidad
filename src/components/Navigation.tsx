@@ -28,6 +28,11 @@ import {
   Settings,
   ShieldCheck,
   Check,
+  Award,
+  Briefcase,
+  DollarSign,
+  Radio,
+  FileCheck,
 } from 'lucide-react';
 
 export type ActiveTab =
@@ -45,7 +50,15 @@ export type ActiveTab =
   | 'trifasica'
   | 'solicitud'
   | 'informe'
-  | 'configuracion';
+  | 'configuracion'
+  | 'esquemas'
+  | 'mediciones'
+  | 'profesor'
+  | 'presupuesto'
+  | 'industrial'
+  | 'inspector'
+  | 'obras'
+  | 'desafios';
 
 interface NavigationProps {
   activeTab: ActiveTab;
@@ -91,13 +104,13 @@ export const Navigation: React.FC<NavigationProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Definición de las 6 categorías reglamentarias solicitadas
+  // Definición de las 6 categorías reglamentarias con las 10 Fases integradas
   const categories = [
     {
       id: 'instalacion',
-      label: 'Instalación Eléctrica',
+      label: 'Instalación & Taller',
       icon: Network,
-      tabs: ['circuitos', 'tablero', 'trifasica'],
+      tabs: ['circuitos', 'tablero', 'trifasica', 'industrial'],
       items: [
         {
           id: 'circuitos' as ActiveTab,
@@ -114,9 +127,16 @@ export const Navigation: React.FC<NavigationProps> = ({
           badge: '15 Talleres',
         },
         {
+          id: 'industrial' as ActiveTab,
+          label: 'Electricidad Industrial & Motores',
+          desc: 'Motores trifásicos, contactores, bombas y cos φ',
+          icon: Zap,
+          badge: 'Fase 7',
+        },
+        {
           id: 'trifasica' as ActiveTab,
-          label: 'Balance de Fases',
-          desc: 'Distribución equilibrada R-S-T',
+          label: 'Balance de Fases R-S-T',
+          desc: 'Distribución equilibrada y corrientes de neutro',
           icon: ArrowRightLeft,
           badge: 'Trifásica',
         },
@@ -130,17 +150,46 @@ export const Navigation: React.FC<NavigationProps> = ({
       ],
     },
     {
-      id: 'analisis',
-      label: 'Herramientas & Análisis',
-      icon: Activity,
-      tabs: ['calculos', 'diagnostico', 'analizar_foto', 'explicaciones'],
+      id: 'ingenieria',
+      label: 'Ingeniería & Normativa',
+      icon: ShieldCheck,
+      tabs: ['inspector', 'esquemas', 'calculos'],
       items: [
         {
+          id: 'inspector' as ActiveTab,
+          label: 'Inspector Automático AEA 90364-771',
+          desc: 'Auditor de cumplimiento, PMS, caídas y certificado',
+          icon: ShieldCheck,
+          badge: 'Fase 8',
+        },
+        {
+          id: 'esquemas' as ActiveTab,
+          label: 'Generador Automático de Esquemas',
+          desc: 'Unifilar, multifilar, conexiones y exportación SVG',
+          icon: FileCheck,
+          badge: 'Fase 3',
+        },
+        {
           id: 'calculos' as ActiveTab,
-          label: 'Memoria de Cálculos',
+          label: 'Memoria de Cálculos Eléctricos',
           desc: 'Corriente Ib, caída ΔV y sección térmica',
           icon: Calculator,
           badge: null,
+        },
+      ],
+    },
+    {
+      id: 'laboratorio',
+      label: 'Laboratorio & Diagnóstico',
+      icon: Activity,
+      tabs: ['mediciones', 'diagnostico', 'analizar_foto', 'explicaciones'],
+      items: [
+        {
+          id: 'mediciones' as ActiveTab,
+          label: 'Laboratorio de Mediciones Virtual',
+          desc: 'Multímetro CAT III, pinza amperométrica y buscapolo',
+          icon: Activity,
+          badge: 'Fase 4',
         },
         {
           id: 'diagnostico' as ActiveTab,
@@ -159,7 +208,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         },
         {
           id: 'explicaciones' as ActiveTab,
-          label: 'Explicaciones Visuales',
+          label: 'Explicaciones Visuales Animadas',
           desc: 'Animaciones de fases, neutro y puesta a tierra',
           icon: Sparkles,
           badge: 'Animado',
@@ -168,10 +217,24 @@ export const Navigation: React.FC<NavigationProps> = ({
     },
     {
       id: 'aprender',
-      label: 'Aprender & Practicar',
+      label: 'Aprender & Certificación',
       icon: GraduationCap,
-      tabs: ['practicas', 'aprender'],
+      tabs: ['profesor', 'desafios', 'practicas', 'aprender'],
       items: [
+        {
+          id: 'profesor' as ActiveTab,
+          label: 'Profesor Virtual de Electricidad',
+          desc: 'Tutor contextualizado, principiante y matriculado',
+          icon: GraduationCap,
+          badge: 'Fase 5',
+        },
+        {
+          id: 'desafios' as ActiveTab,
+          label: 'Desafíos & Evaluaciones Técnicas',
+          desc: 'Resolución de averías reales y certificado con nota',
+          icon: Award,
+          badge: 'Fase 10',
+        },
         {
           id: 'practicas' as ActiveTab,
           label: 'Aula de Prácticas Guiadas',
@@ -189,11 +252,25 @@ export const Navigation: React.FC<NavigationProps> = ({
       ],
     },
     {
-      id: 'documentacion',
-      label: 'Proyectos & Documentación',
-      icon: FileText,
-      tabs: ['informe', 'materiales', 'solicitud'],
+      id: 'gestion',
+      label: 'Obras & Presupuestos',
+      icon: Briefcase,
+      tabs: ['obras', 'presupuesto', 'informe', 'materiales', 'solicitud'],
       items: [
+        {
+          id: 'obras' as ActiveTab,
+          label: 'Gestión de Obras & Bitácora',
+          desc: 'Cronograma de avance, actas de campo y entrega',
+          icon: Briefcase,
+          badge: 'Fase 9',
+        },
+        {
+          id: 'presupuesto' as ActiveTab,
+          label: 'Presupuestador Profesional',
+          desc: 'Cómputo métrico, mano de obra por boca y cotización',
+          icon: DollarSign,
+          badge: 'Fase 6',
+        },
         {
           id: 'informe' as ActiveTab,
           label: 'Informe Técnico Imprimible',
@@ -203,7 +280,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         },
         {
           id: 'materiales' as ActiveTab,
-          label: 'Cómputo & Presupuesto',
+          label: 'Cómputo & Materiales BOM',
           desc: 'Lista de materiales con exportación CSV',
           icon: ShoppingBag,
           badge: 'BOM',

@@ -25,6 +25,14 @@ import { DiagnosticsView } from './components/DiagnosticsView';
 import { PhotoAnalysisView } from './components/PhotoAnalysisView';
 import { VisualExplanationsView } from './components/VisualExplanationsView';
 import { PhaseBalancingView } from './components/PhaseBalancingView';
+import { SchematicsGeneratorView } from './components/SchematicsGeneratorView';
+import { VirtualMeasurementLabView } from './components/VirtualMeasurementLabView';
+import { VirtualProfessorView } from './components/VirtualProfessorView';
+import { ProfessionalBudgetView } from './components/ProfessionalBudgetView';
+import { IndustrialWorkshopView } from './components/IndustrialWorkshopView';
+import { AutomaticInspectorView } from './components/AutomaticInspectorView';
+import { JobClientManagementView } from './components/JobClientManagementView';
+import { TechnicalChallengesView } from './components/TechnicalChallengesView';
 import { SettingsView } from './components/SettingsView';
 import { HelpModal } from './components/HelpModal';
 import { ProjectManagerModal } from './components/ProjectManagerModal';
@@ -646,8 +654,15 @@ export default function App() {
                     isTripped: false,
                   },
                 })),
+                injectedFaults: [],
+                pluggedAppliances: (prev.pluggedAppliances || []).map((a) => ({
+                  ...a,
+                  pluggedIntoSymbolId: undefined,
+                  isOn: false,
+                })),
               }));
             }}
+            onUpdateProject={updateProject}
           />
         )}
 
@@ -714,6 +729,28 @@ export default function App() {
         )}
 
         {activeTab === 'informe' && <ReportView project={project} />}
+
+        {activeTab === 'esquemas' && <SchematicsGeneratorView project={project} />}
+
+        {activeTab === 'mediciones' && (
+          <VirtualMeasurementLabView project={project} simState={simState} />
+        )}
+
+        {activeTab === 'profesor' && <VirtualProfessorView project={project} />}
+
+        {activeTab === 'presupuesto' && (
+          <ProfessionalBudgetView project={project} onUpdateProject={updateProject} />
+        )}
+
+        {activeTab === 'industrial' && <IndustrialWorkshopView project={project} />}
+
+        {activeTab === 'inspector' && <AutomaticInspectorView project={project} />}
+
+        {activeTab === 'obras' && (
+          <JobClientManagementView project={project} onUpdateProject={updateProject} />
+        )}
+
+        {activeTab === 'desafios' && <TechnicalChallengesView project={project} />}
 
         {activeTab === 'configuracion' && (
           <SettingsView
